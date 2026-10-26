@@ -6,7 +6,7 @@ A single-page practice hub for the Philippine CPA Licensure Exam (CPALE). Open `
 
 **Management Services → Cost Concepts & Cost Behavior**
 - **Handout**: manufacturing costs, prime and conversion cost, product vs. period costs, COGM and COGS, cost terms, cost behavior, high-low, scattergraph, least squares, correlation.
-- **Questions (20)**: two sets of 10 problem types with different givens.
+- **Questions (40)**: four sets of 10 problem types with different givens.
 
 **Management Services → CVP Analysis**
 - **Handout**: study notes on cost-volume-profit analysis. Covers contribution margin, break-even, target profit, margin of safety, sales mix, DOL, sensitivity and indifference point.

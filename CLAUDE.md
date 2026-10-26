@@ -14,7 +14,7 @@
 - Peso sign is ₱. Numbers use thousands separators.
 
 ## Questions (`tools/*_questions.py`)
-- Source pattern: take the review handout's practice questions, keep the problem TYPE, change givens and wording. CVP = 3 sets of 13 + 1 bonus; Cost Concepts = 2 sets of 10.
+- Source pattern: take the review handout's practice questions, keep the problem TYPE, change givens and wording. CVP = 3 sets of 13 + 1 bonus; Cost Concepts = 4 sets of 10.
 - Each problem type is a function (e.g. q1…q13 in CVP, t1…t10 in cost) that takes the givens and COMPUTES the correct answer, distractors and solution steps. Never type an answer by hand.
 - `part()` asserts the 4 options are distinct. Options are shuffled with a fixed seed so letters stay stable between builds.
 - Givens are chosen so answers come out as whole numbers (DOL may have decimals).

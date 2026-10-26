@@ -177,9 +177,53 @@ def batch(v):
                       [(0, 8), (22000, 5), (14000, 6.25)]))
         out.append(t10("A company produced 80,000 units in October, its highest month, and 35,000 units in February, its lowest. Power costs were ₱142,000 in October and ₱79,000 in February. Using the high-low method, estimate power costs for a month with 60,000 units.",
                        (80000, 142000), (35000, 79000), 60000, "unit", [106500, 84000, 120000]))
+    if v == 3:
+        out.append(t1("Direct materials on hand were ₱60,000 at the start of August and ₱45,000 at the end. Additional data for August:", 60, 45, 150, 110, 125,
+                      "Q1: What prime cost was added to production in August?", "Q2: What conversion cost was added to production in August?"))
+        out.append(t2a("Manufacturing overhead is ₱1,400,000, direct labor is ₱1,150,000, and prime costs amount to ₱3,200,000. Determine the cost of direct materials.", 3200, 1400, 1150))
+        out.append(t3("Costs for the quarter: direct materials used ₱260,000; direct labor ₱410,000; manufacturing overhead ₱335,000; selling and administrative expenses ₱180,000. Total product costs are:", 260, 410, 335, [180]))
+        out.append(t4("Selected costs for the year: advertising, ₱64,000; factory utilities, ₱21,000; office salaries, ₱118,000; plant manager's salary, ₱90,000; and sales commissions, ₱47,000. Period costs total:",
+                      [("advertising", 64, True), ("factory utilities", 21, False), ("office salaries", 118, True), ("plant manager's salary", 90, False), ("sales commissions", 47, True)], [340, 182, 111]))
+        out.append(t5("When 30,000 units are produced, total costs are ₱240,000, of which ₱90,000 are variable. Compute total costs at 36,000 units.", 30, 240, 90, True, 36))
+        out.append(t6("Below are the costs incurred during the month:", [
+            ("Direct materials", 175, "DM"), ("Factory supervisor's salary", 40, "OH"), ("Office utilities", 11, "PER"), ("Lubricants for factory machines", 7, "OH"),
+            ("Sales commissions", 58, "PER"), ("Factory insurance", 16, "OH"), ("Accounting staff salaries", 66, "PER"), ("Direct labor", 190, "DL"), ("Promotional materials", 29, "PER")],
+            ["Q1: Manufacturing overhead totals:", "Q2: Product costs total:", "Q3: Period costs total:"]))
+        out.append(t7("Visayas Woodcraft's inventories for September were:", (150, 120), (90, 125), (175, 160), 520, 460, 380,
+                      "Q1: Total manufacturing costs for September amounted to:", "Q2: Cost of goods sold for September is:",
+                      "<p>September purchases of raw materials were ₱520,000. Direct labor was ₱460,000 and manufacturing overhead was ₱380,000.</p>"))
+        out.append(t8("The following data relate to a manufacturer's operations for the year:", 42, 66, 88, 30, 54, 101, 230, 205, 260,
+                      ["Q1: Direct materials used were:", "Q2: Cost of goods manufactured was:", "Q3: Cost of goods sold was:"]))
+        out.append(t9("Supplies cost and direct labor hours for four months were:", [(3000, 18600), (4200, 25500), (2000, 14400), (4500, 24900)],
+                      "direct labor hour", ["Direct labor hours", "Supplies cost"], "<p>Using the high-low method, the cost formula for supplies is:</p>",
+                      [(8400, 3.6), (0, 5.5), (5400, 4.4)]))
+        out.append(t10("At 12,000 direct labor hours, indirect labor cost was ₱55,200; at 7,000 hours, it was ₱37,700. These were the year's high and low activity levels. Using the high-low method, what is the expected indirect labor cost at 9,500 hours?",
+                       (12000, 55200), (7000, 37700), 9500, "direct labor hour", [43700, 33250, 48000]))
+    if v == 4:
+        out.append(t1("A company started November with ₱18,000 of direct materials and ended with ₱27,000. November data:", 18, 27, 132, 88, 104,
+                      "Q1: Prime cost added to production in November was:", "Q2: Conversion cost added to production in November was:"))
+        out.append(t2b("A company's conversion costs are ₱2,250,000 and its prime costs are ₱2,700,000. Manufacturing overhead is ₱1,320,000. How much is direct materials?", 2250, 1320, 2700))
+        out.append(t3("A manufacturer recorded: direct materials used, ₱320,000; direct labor, ₱275,000; factory overhead, ₱405,000; selling expenses, ₱150,000; and general and administrative expenses, ₱85,000. How much should be treated as product costs?", 320, 275, 405, [150, 85]))
+        out.append(t4("Costs incurred for the period: store rent, ₱48,000; depreciation of factory building, ₱60,000; freight-out, ₱17,000; factory janitor's wages, ₱22,000; office staff salaries, ₱95,000; and bad debts expense, ₱9,000. How much are period costs?",
+                      [("store rent", 48, True), ("factory building depreciation", 60, False), ("freight-out", 17, True), ("factory janitor's wages", 22, False), ("office staff salaries", 95, True), ("bad debts", 9, True)], [251, 160, 82]))
+        out.append(t5("Total costs at 15,000 units are ₱210,000. Fixed costs make up ₱120,000 of this. How much will total costs be at 18,000 units?", 15, 210, 120, False, 18))
+        out.append(t6("A manufacturer incurred these costs during the month:", [
+            ("Direct materials", 205, "DM"), ("Plant security", 18, "OH"), ("Sales manager's salary", 54, "PER"), ("Small tools used in the factory", 6, "OH"),
+            ("Depreciation of showroom", 21, "PER"), ("Factory heat and light", 15, "OH"), ("Legal fees, head office", 12, "PER"), ("Direct labor", 230, "DL"), ("Sales travel", 33, "PER")],
+            ["Q1: Compute total manufacturing overhead.", "Q2: Compute total product costs.", "Q3: Compute total period costs."]))
+        out.append(t7("Mindanao Metalworks reported these inventories for December:", (110, 135), (200, 170), (95, 120), 480, 390, 350,
+                      "Q1: How much are December's total manufacturing costs?", "Q2: How much is December's cost of goods sold?",
+                      "<p>December raw material purchases totaled ₱480,000, direct labor was ₱390,000, and manufacturing overhead was ₱350,000.</p>"))
+        out.append(t8("Information from a company's records:", 28, 52, 64, 36, 40, 58, 186, 154, 172,
+                      ["Q1: How much direct materials were used?", "Q2: What is the cost of goods manufactured?", "Q3: What is the cost of goods sold?"]))
+        out.append(t9("A courier company recorded the following deliveries and costs:", [(900, 21500), (1400, 29000), (1250, 29800), (700, 18500)],
+                      "delivery", ["Deliveries", "Total delivery cost"], "<p>Using the high-low method, what is the cost formula?</p>",
+                      [(8000, 16), (5000, 17), (10500, 13.5)]))
+        out.append(t10("Machine hours peaked at 28,000 in August, when repair costs were ₱74,600, and were lowest at 16,000 in January, when repair costs were ₱52,400. Using the high-low method, what repair cost should be expected at 22,000 machine hours?",
+                       (28000, 74600), (16000, 52400), 22000, "machine hour", [40700, 68000, 58000]))
     return out
 
-for v in (1, 2):
+for v in (1, 2, 3, 4):
     Q.extend(batch(v))
 random.seed(510)
 for qq in Q:

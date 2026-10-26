@@ -17,7 +17,7 @@ TOPICS = [
     dict(id="cost", title="Cost Concepts & Cost Behavior",
          blurb="Product vs. period costs, COGM and COGS, cost behavior, high-low method",
          handout=read('cost_handout.html'), qs=cost_questions.Q,
-         intro="Questions 1 to 10 and 11 to 20 are two sets of the same 10 problem types with different givens. Solve first, then tap Reveal answer.",
+         intro="Questions 1 to 40 are four sets of the same 10 problem types (1–10, 11–20, 21–30, 31–40), each with different givens. Solve first, then tap Reveal answer.",
          extra=[]),
     dict(id="cvp", title="CVP Analysis",
          blurb="Break-even, target profit, margin of safety, sales mix, operating leverage",
