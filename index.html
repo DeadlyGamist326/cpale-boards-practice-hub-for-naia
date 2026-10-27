@@ -1,6 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CVP Practice Hub</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root{--bg:#ffffff;--pink:#ffe4ec;--soft:#fff5f8;--rose:#d94f7c;--deep:#a8315a;--ink:#222222;--muted:#6b5961;--line:#f3c6d5;color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -30,6 +36,20 @@ h2{font-size:22px;color:var(--rose);margin:0 0 10px}
 .sub{margin:12px 0 4px}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;margin:6px 0 12px;padding-left:24px}
 @media (max-width:520px){.opts{grid-template-columns:1fr}}
+/* Phone: bigger text and larger tap targets */
+@media (max-width:600px){
+body{font-size:18px;line-height:1.65}
+h1{font-size:28px} h2{font-size:23px}
+.sec{font-size:17px;padding:20px} .sec b{font-size:21px} .sec small{font-size:14px}
+.tab{font-size:16px;padding:10px 16px} .back{font-size:17px;padding:8px 0}
+.crumb,.tag{font-size:14px} .qn{font-size:20px}
+.q{padding:16px} .opts{gap:6px;padding-left:26px} .opts li{padding:2px 0}
+.rv{font-size:17px;padding:12px 20px}
+.steps{font-size:17px} .ans{padding:12px 14px}
+th{font-size:16px} th,td{padding:8px 10px;line-height:1.35}
+.ho h3{font-size:21px} .ho h4{font-size:18px} .lead{font-size:19px}
+.fx{padding:12px 14px} .tip{padding:14px} .foot{font-size:14px}
+}
 .q p{margin:0 0 8px}
 .q ol[type="a"]:not(.opts){margin:0 0 12px;padding-left:22px}
 .rv{font-size:15px;font-weight:bold;background:var(--rose);color:#ffffff;border:0;border-radius:8px;padding:8px 16px}
@@ -53,7 +73,8 @@ table.sum td{text-align:left;vertical-align:top}
 .intro{color:var(--muted);margin:0 0 16px}
 .foot{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}
 </style>
-
+</head>
+<body>
 <main class="wrap">
 <div id="home">
   <h1>Practice Hub</h1>
@@ -413,3 +434,5 @@ document.querySelectorAll(".back").forEach(b=>b.onclick=()=>{document.querySelec
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{show(cur,b.dataset.v);window.scrollTo(0,0)});
 document.querySelectorAll(".rv").forEach(b=>{const a=$(b.dataset.t),lab=b.textContent;b.onclick=()=>{a.hidden=!a.hidden;b.textContent=a.hidden?lab:"Hide answer"+(lab.endsWith("s")?"s":"")}});
 </script>
+</body>
+</html>

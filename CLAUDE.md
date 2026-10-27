@@ -25,4 +25,6 @@
 - Written in our own words. Do NOT paste text or branding from review center handouts (they forbid distribution and this repo is public).
 
 ## Verification
-After any change: run `python3 tools/build.py`, check the console count, and syntax-check the inline script (`node --check` on the extracted `<script>`). Check the page at 400px width for horizontal overflow.
+After any change: run `python3 tools/build.py`, check the console count, and syntax-check the inline script (`node --check` on the extracted `<script>`). Check the page at 400px width for horizontal overflow, using real phone emulation (e.g. Playwright `devices["Pixel 5"]`), since GitHub Pages serves index.html as-is.
+- index.html must stay a full document (`<!doctype html>`, `<meta name="viewport" content="width=device-width, initial-scale=1">`). Without the viewport tag phones render it at desktop width and the text looks tiny.
+- Phone styles live in the `@media (max-width:600px)` block (base text 18px).
