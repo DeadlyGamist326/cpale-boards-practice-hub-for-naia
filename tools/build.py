@@ -3,7 +3,7 @@ import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 os.chdir(os.path.join(HERE, '..'))
-import cost_questions, cvp_questions
+import cost_questions, cvp_questions, tax_section
 
 def read(p): return open(os.path.join('tools', p), encoding='utf-8').read()
 
@@ -46,24 +46,26 @@ def qhtml(tid, i, q):
 boxes, views = [], []
 for t in TOPICS:
     tid, n = t["id"], len(t["qs"])
-    boxes.append(f'<button type="button" class="sec" data-topic="{tid}"><b>{t["title"]}</b>{t["blurb"]}<small>Handout · {n} questions'
-                 + "".join(" · " + e[1] for e in t["extra"]) + '</small></button>')
+    boxes.append(f'<a class="sec xl" href="#{tid}"><b>{t["title"]}</b>{t["blurb"]}<small>Handout · {n} questions'
+                 + "".join(" · " + e[1] for e in t["extra"]) + '</small></a>')
     tabs = [("handout", "Handout"), ("questions", f"Questions ({n})")] + [(e[0], e[1]) for e in t["extra"]]
     panes = [f'<div class="pane" data-v="handout">{t["handout"]}</div>',
              f'<div class="pane" data-v="questions" hidden><h2>{t["title"]}: Practice Questions</h2><p class="intro">{t["intro"]}</p>'
              + "".join(qhtml(tid, i, q) for i, q in enumerate(t["qs"], 1)) + '</div>']
     for vid, _, h, intro, fn in t["extra"]:
         panes.append(f'<div class="pane" data-v="{vid}" hidden><h2>{h}</h2><p class="intro">{intro}</p>{fn(tid)}</div>')
-    views.append(f'<div class="topic" id="t-{tid}" hidden><div class="bar"><button type="button" class="back">← Home</button>'
+    views.append(f'<div class="topic" id="t-{tid}" hidden><div class="bar"><button type="button" class="back" data-home>← Home</button>'
                  + "".join(f'<button type="button" class="tab" data-v="{v}" aria-selected="{"true" if v == "handout" else "false"}">{l}</button>' for v, l in tabs)
                  + f'</div><p class="crumb">{t["title"]}</p>' + "".join(panes) + '</div>')
+
+tax_box, tax_views = tax_section.render()
 
 page = f'''<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CVP Practice Hub</title>
+<title>CPALE Practice Hub</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 html{{-webkit-text-size-adjust:100%;text-size-adjust:100%}}
@@ -132,22 +134,29 @@ th{{background:var(--pink);color:var(--deep);font-size:14px}}
 table.sum td{{text-align:left;vertical-align:top}}
 .intro{{color:var(--muted);margin:0 0 16px}}
 .foot{{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}}
+a.sec{{text-decoration:none}}
+{tax_section.CSS}
 </style>
 </head>
 <body>
 <main class="wrap">
 <div id="home">
   <h1>Practice Hub</h1>
-  <p class="sub-h">Management Services</p>
+  <p class="sub-h">CPA Licensure Exam review</p>
+  <p class="subj">Management Services</p>
   <div class="sections">{"".join(boxes)}</div>
+  <p class="subj">Taxation</p>
+  <div class="sections">{tax_box}</div>
   <p class="foot">Made by Lax</p>
 </div>
 {"".join(views)}
+{tax_views}
 </main>
+<button type="button" id="retpill" hidden></button>
 
 <script>
 const $=id=>document.getElementById(id);
-let cur=null;
+let cur=null,curKey=null,fwd=false,navs=0;const memo={{}},trail=[];
 function show(tid,v){{
   const t=$("t-"+tid);
   t.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v?"true":"false"));
@@ -155,18 +164,57 @@ function show(tid,v){{
   try{{localStorage.setItem("tab-"+tid,v)}}catch(e){{}}
 }}
 function openTopic(tid){{
-  $("home").hidden=true;document.querySelectorAll(".topic").forEach(t=>t.hidden=t.id!=="t-"+tid);
   let v="handout";try{{v=localStorage.getItem("tab-"+tid)||v}}catch(e){{}}
   if(!$("t-"+tid).querySelector('.pane[data-v="'+v+'"]'))v="handout";
-  cur=tid;show(tid,v);window.scrollTo(0,0);
+  cur=tid;show(tid,v);
 }}
-document.querySelectorAll(".sec").forEach(b=>b.onclick=()=>openTopic(b.dataset.topic));
-document.querySelectorAll(".back").forEach(b=>b.onclick=()=>{{document.querySelectorAll(".topic").forEach(t=>t.hidden=true);$("home").hidden=false;window.scrollTo(0,0)}});
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{{show(cur,b.dataset.v);window.scrollTo(0,0)}});
-document.querySelectorAll(".rv").forEach(b=>{{const a=$(b.dataset.t),lab=b.textContent;b.onclick=()=>{{a.hidden=!a.hidden;b.textContent=a.hidden?lab:"Hide answer"+(lab.endsWith("s")?"s":"")}}}});
+function viewFor(page){{
+  if(!page)return $("home");
+  if(page==="tax")return $("tax-home");
+  if(page.startsWith("tax-"))return $(page);
+  return $("t-"+page);
+}}
+function titleOf(page){{const v=viewFor(page);const h=v&&v.querySelector("h2");return page===""?"Home":(h?h.textContent:"previous page")}}
+function pill(){{
+  const p=$("retpill"),t=trail[trail.length-1];
+  if(t&&t.key!==curKey){{p.textContent="↩ Back to "+t.label;p.hidden=false}}else p.hidden=true;
+}}
+function route(){{
+  let h=location.hash.slice(1);try{{h=decodeURIComponent(h)}}catch(e){{}}
+  let [page,sec]=h.split("--");let el=viewFor(page);
+  if(!el){{page="";el=$("home")}}
+  if(curKey!==null)memo[curKey]=window.scrollY;
+  document.querySelectorAll("#home,.topic,.taxv").forEach(v=>v.hidden=v!==el);
+  if(el.classList.contains("topic"))openTopic(page);
+  if(page==="tax-calc")buildCalcs();
+  const wasFwd=fwd;fwd=false;navs++;
+  const t=trail[trail.length-1];
+  if(t&&t.key===page&&!sec){{trail.pop();requestAnimationFrame(()=>window.scrollTo(0,t.y))}}
+  else if(sec){{const tg=$(page+"--"+sec);requestAnimationFrame(()=>{{if(tg){{tg.scrollIntoView();tg.classList.add("hit");setTimeout(()=>tg.classList.remove("hit"),1600)}}else window.scrollTo(0,0)}})}}
+  else if(wasFwd)window.scrollTo(0,0);
+  else requestAnimationFrame(()=>window.scrollTo(0,memo[page]||0));
+  curKey=page;pill();
+}}
+document.addEventListener("click",e=>{{
+  const a=e.target.closest("a[href^='#']");if(!a)return;
+  const inText=a.closest(".taxv")&&!a.closest(".pn,.otp,.bar")&&!a.classList.contains("toc");
+  if(inText)trail.push({{key:curKey,y:window.scrollY,label:titleOf(curKey)}});
+  else if(!a.classList.contains("jump"))trail.length=0;
+  fwd=true;
+  if(a.getAttribute("href")===location.hash){{e.preventDefault();route()}}
+}});
+$("retpill").onclick=()=>history.back();
+window.addEventListener("hashchange",route);
+document.querySelectorAll("[data-home]").forEach(b=>b.onclick=()=>{{trail.length=0;fwd=true;location.hash=""}});
+document.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>{{if(navs>1)history.back();else{{fwd=true;location.hash="tax"}}}});
+document.querySelectorAll(".tab[data-v]").forEach(b=>b.onclick=()=>{{show(cur,b.dataset.v);window.scrollTo(0,0)}});
+document.querySelectorAll(".rv").forEach(b=>{{const a=$(b.dataset.t),lab=b.textContent;b.onclick=()=>{{a.hidden=!a.hidden;b.textContent=a.hidden?lab:(lab.startsWith("Show")?"Hide answer":"Hide answer"+(lab.endsWith("s")?"s":""))}}}});
+const qf=$("tax-qf");if(qf)qf.onchange=()=>document.querySelectorAll(".tq").forEach(c=>c.hidden=!!qf.value&&c.dataset.topic!==qf.value);
+{tax_section.CALC_JS}
+route();
 </script>
 </body>
 </html>
 '''
 open('index.html', 'w', encoding='utf-8').write(page)
-print('Built index.html:', ", ".join(f'{t["title"]} {len(t["qs"])} questions' for t in TOPICS))
+print('Built index.html:', ", ".join(f'{t["title"]} {len(t["qs"])} questions' for t in TOPICS) + f', Taxation {len(tax_section.ORDER)} chapters')
