@@ -249,8 +249,7 @@ const CALCS=[
    ["Income realized in the year of sale",peso(gp/cp*ip),1,[pct(gp/cp)+" × "+peso(ip),"= "+peso(gp/cp*ip)]]]}},
  {t:"H. Vanishing deduction percentage",link:["estate","Estate Tax"],f:[["y","Years between the two deaths (or gift and death)",2.5]],
   run:v=>{const y=v.y,p=y<=1?1:y<=2?.8:y<=3?.6:y<=4?.4:y<=5?.2:0,band=y<=1?"1 year or less":y<=5?"more than "+(Math.ceil(y)-1)+" but not more than "+Math.ceil(y)+" years":"more than 5 years";return [
-   ["Percentage allowed",pct(p),1,[y+" years is "+band,"→ "+pct(p)]],
-   ["Scale","100 / 80 / 60 / 40 / 20%, none after 5 years"]]}},
+   ["Percentage allowed",pct(p),1,[y+" years is "+band,"→ "+pct(p)]]]}},
 ];
 const DN=[
  ["<b>Already taken out.</b> Enter the NET taxable income, after deductions.",
@@ -276,7 +275,7 @@ const DN=[
 ];
 const FX=[
  ["<b>Income tax</b> = Fixed amount at the bracket floor + Rate × (Net taxable income − Bracket floor)",
-  "Brackets: up to ₱250,000 → 0% · over ₱250,000 → 15% · over ₱400,000 → ₱22,500 + 20% · over ₱800,000 → ₱102,500 + 25% · over ₱2M → ₱402,500 + 30% · over ₱8M → ₱2,202,500 + 35%"],
+  {th:["Net taxable income","Tax"],rows:[["Up to ₱250,000","0%"],["Over ₱250,000 to ₱400,000","15% of excess over ₱250,000"],["Over ₱400,000 to ₱800,000","₱22,500 + 20% of excess over ₱400,000"],["Over ₱800,000 to ₱2,000,000","₱102,500 + 25% of excess over ₱800,000"],["Over ₱2,000,000 to ₱8,000,000","₱402,500 + 30% of excess over ₱2,000,000"],["Over ₱8,000,000","₱2,202,500 + 35% of excess over ₱8,000,000"]]}],
  ["<b>Purely self-employed:</b> 8% × (Gross sales/receipts + Other non-operating income − ₱250,000)",
   "<b>Mixed income earner:</b> Graduated tax on compensation + 8% × (Gross sales/receipts + Other income), with NO ₱250,000 deduction",
   "<b>Tax still payable</b> = Total income tax − Tax withheld",
@@ -303,11 +302,12 @@ const FX=[
   "<b>Gross profit rate</b> = Gross profit ÷ Contract price",
   "<b>Income realized</b> = Gross profit rate × Collections in the year (IP in the year of sale)"],
  ["<b>Vanishing deduction %</b> depends on the years between the two transfers:",
-  "1 year or less → 100% · up to 2 → 80% · up to 3 → 60% · up to 4 → 40% · up to 5 → 20% · over 5 → none"],
+  {th:["Years between the transfers","Deduction %"],rows:[["1 year or less","100%"],["More than 1 to 2 years","80%"],["More than 2 to 3 years","60%"],["More than 3 to 4 years","40%"],["More than 4 to 5 years","20%"],["More than 5 years","None"]]}],
 ];
+const L=l=>typeof l==="string"?'<div>'+l+'</div>':'<div class="tw"><table class="mini"><thead><tr>'+l.th.map(h=>'<th>'+h+'</th>').join("")+'</tr></thead><tbody>'+l.rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>';
 function buildCalcs(){const box=$("tax-calcs");if(!box||box.dataset.done)return;box.dataset.done=1;
  CALCS.forEach((c,ci)=>{const s=document.createElement("section");s.className="calc";
-  s.innerHTML='<h3>'+c.t+'</h3><div class="fx calcfx"><span class="lbl">Formula</span>'+FX[ci].map(l=>'<div>'+l+'</div>').join("")+'</div><div class="dn"><span class="lbl">Deductions</span>'+DN[ci].map(l=>'<div>'+l+'</div>').join("")+'</div>'+c.f.map(f=>'<label class="cf" for="c'+ci+f[0]+'"><span>'+f[1]+'</span><input id="c'+ci+f[0]+'" type="number" inputmode="decimal" step="any" value="'+f[2]+'"></label>').join("")
+  s.innerHTML='<h3>'+c.t+'</h3><div class="fx calcfx"><span class="lbl">Formula</span>'+FX[ci].map(L).join("")+'</div><div class="dn"><span class="lbl">Deductions</span>'+DN[ci].map(l=>'<div>'+l+'</div>').join("")+'</div>'+c.f.map(f=>'<label class="cf" for="c'+ci+f[0]+'"><span>'+f[1]+'</span><input id="c'+ci+f[0]+'" type="number" inputmode="decimal" step="any" value="'+f[2]+'"></label>').join("")
    +'<div class="out"></div><p class="calc-l">Notes: <a class="xl" href="#tax-'+c.link[0]+'">'+c.link[1]+'</a></p>';
   box.appendChild(s);const upd=()=>{const v={};c.f.forEach(f=>v[f[0]]=parseFloat($("c"+ci+f[0]).value)||0);
    s.querySelector(".out").innerHTML=c.run(v).map((r,ri)=>'<div class="row'+(r[2]?" res":"")+'"><span>'+r[0]+'</span><b>'+r[1]+'</b>'
@@ -408,6 +408,8 @@ a.tab.xl{text-decoration:none}
 .calcfx .lbl{color:var(--deep)}
 .dn{background:#e6f0fb;border-left:4px solid #3d6fb4;border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:6px}
 .dn .lbl{color:#2f5a96}
+table.mini{width:100%;min-width:0;margin:2px 0}
+table.mini th,table.mini td{text-align:left;vertical-align:top;padding:5px 8px}
 .cf{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .cf span{font-size:.92em}
 .cf input{font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fffdf3;color:#1f4e9e;max-width:100%}
