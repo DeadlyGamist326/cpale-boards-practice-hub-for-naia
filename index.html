@@ -122,9 +122,18 @@ a.tab.xl{text-decoration:none}
 .cf input{font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fffdf3;color:#1f4e9e;max-width:100%}
 .cf input:focus{outline:2px solid var(--rose);border-color:var(--rose)}
 .out{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.out .row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding:4px 0;font-variant-numeric:tabular-nums}
+.calc{position:relative}
+.out .row{position:relative;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px 10px;border-bottom:1px dashed var(--line);padding:4px 0;font-variant-numeric:tabular-nums}
 .out .row b{text-align:right}
+.out .row:has(.wk) > b{cursor:pointer;text-decoration:underline dotted var(--rose);text-underline-offset:4px}
+.wk{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--rose);background:var(--bg);color:var(--deep);font-weight:bold;font-size:16px;line-height:1;padding:0}
+.wk[aria-expanded="true"]{background:var(--rose);color:#ffffff}
+.work{grid-column:1/-1;justify-self:end;width:100%;max-width:100%;background:var(--bg);border:1.5px solid var(--rose);border-radius:10px;padding:10px 12px;margin:6px 0 4px;box-shadow:0 4px 12px rgba(120,30,60,.12);font-variant-numeric:tabular-nums;position:relative}
+.work::before{content:"";position:absolute;top:-8px;right:8px;width:12px;height:12px;background:var(--bg);border-left:1.5px solid var(--rose);border-top:1.5px solid var(--rose);transform:rotate(45deg)}
+.work div{padding:1px 0}
+.work .lbl{color:var(--deep)}
 .out .res{border-bottom:0;background:var(--pink);border-radius:8px;padding:8px 10px;margin-top:4px}
+.out .res .work{margin-bottom:2px}
 .calc-l{font-size:.9em;margin:8px 0 0}
 #retpill{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--deep);color:#ffffff;border:0;border-radius:999px;padding:12px 20px;font-size:16px;font-weight:bold;box-shadow:0 4px 14px rgba(120,30,60,.35);max-width:calc(100% - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hit{background:#fff3b0!important;transition:background .8s}
@@ -544,32 +553,64 @@ const qf=$("tax-qf");if(qf)qf.onchange=()=>document.querySelectorAll(".tq").forE
 
 const peso=v=>typeof v==="string"?v:"₱"+(Math.round(v*100)/100).toLocaleString("en-US",{maximumFractionDigits:2});
 const pct=v=>(Math.round(v*10000)/100)+"%";
+const BR=[[0,0,0],[250000,.15,0],[400000,.2,22500],[800000,.25,102500],[2000000,.3,402500],[8000000,.35,2202500]];
+function grad(x){let i=0;BR.forEach((r,k)=>{if(x>=r[0])i=k});const r=BR[i],up=BR[i+1],tax=r[2]+r[1]*(x-r[0]);
+ return {r,tax,where:peso(x)+" falls in the bracket "+(i===0?"up to ₱250,000":"over "+peso(r[0])+(up?" to "+peso(up[0]):"")),
+  steps:i===0?[peso(x)+" is ₱250,000 or less, so the tax is ₱0"]:[peso(r[2])+" + "+pct(r[1])+" × ("+peso(x)+" − "+peso(r[0])+")","= "+peso(r[2])+" + "+pct(r[1])+" × "+peso(x-r[0]),"= "+peso(r[2])+" + "+peso(r[1]*(x-r[0])),"= "+peso(tax)]}}
 const CALCS=[
  {t:"A. Individual graduated income tax (2023 onward)",link:["individuals","Individuals"],f:[["nti","Net taxable income",1240000]],
-  run:v=>{const B=[[0,0,0],[250000,.15,0],[400000,.2,22500],[800000,.25,102500],[2000000,.3,402500],[8000000,.35,2202500]];
-   let b=B[0];for(const x of B)if(v.nti>=x[0])b=x;const tax=b[2]+b[1]*(v.nti-b[0]);
-   return [["Bracket floor",peso(b[0])],["Fixed amount + rate × excess",peso(b[2])+" + "+pct(b[1])+" × "+peso(v.nti-b[0])],["Income tax due",peso(tax),1]]}},
+  run:v=>{const g=grad(v.nti);return [
+   ["Bracket floor",peso(g.r[0]),0,[g.where]],
+   ["Fixed amount + rate × excess",peso(g.r[2])+" + "+pct(g.r[1])+" × "+peso(v.nti-g.r[0]),0,["Fixed amount at the floor: "+peso(g.r[2]),"Rate on the excess: "+pct(g.r[1]),"Excess = "+peso(v.nti)+" − "+peso(g.r[0])+" = "+peso(v.nti-g.r[0])]],
+   ["Income tax due",peso(g.tax),1,g.steps]]}},
  {t:"A2. 8% option (self-employed or mixed income)",link:["individuals","Individuals"],f:[["gs","Gross sales/receipts",2500000],["oth","Other non-operating income",0],["mix","Mixed income earner? (1 = yes, 0 = no)",1],["comp","Taxable compensation income (for the mixed earner)",1240000],["wh","Tax withheld on compensation",262000]],
-  run:v=>{if(v.gs>3000000)return [["8% income tax","Not eligible: gross sales over ₱3M",1]];
-   const base=Math.max(0,v.gs+v.oth-(v.mix==1?0:250000)),t8=.08*base;const r=[["8% base",peso(base)+(v.mix==1?" (no ₱250,000 deduction for a mixed earner)":" (after ₱250,000)")],["8% income tax",peso(t8),1]];
-   if(v.mix==1){const B=[[0,0,0],[250000,.15,0],[400000,.2,22500],[800000,.25,102500],[2000000,.3,402500],[8000000,.35,2202500]];let b=B[0];for(const x of B)if(v.comp>=x[0])b=x;const tc=b[2]+b[1]*(v.comp-b[0]);
-    r.push(["Tax on compensation (graduated)",peso(tc)],["Total income tax",peso(tc+t8)],["Tax still payable after withholding",peso(tc+t8-v.wh),1])}return r}},
+  run:v=>{if(v.gs>3000000)return [["8% income tax","Not eligible: gross sales over ₱3M",1,[peso(v.gs)+" is more than ₱3,000,000, so the 8% option cannot be used; use the graduated table"]]];
+   const ded=v.mix==1?0:250000,base=Math.max(0,v.gs+v.oth-ded),t8=.08*base;
+   const r=[["8% base",peso(base),0,[peso(v.gs)+" + "+peso(v.oth)+" − "+peso(ded)+(v.mix==1?" (a mixed earner does not deduct ₱250,000)":""),"= "+peso(base)]],
+    ["8% income tax",peso(t8),1,["8% × "+peso(base),"= "+peso(t8)]]];
+   if(v.mix==1){const g=grad(v.comp);r.push(["Tax on compensation (graduated)",peso(g.tax),0,[g.where].concat(g.steps)],
+    ["Total income tax",peso(g.tax+t8),0,[peso(g.tax)+" + "+peso(t8),"= "+peso(g.tax+t8)]],
+    ["Tax still payable after withholding",peso(g.tax+t8-v.wh),1,[peso(g.tax+t8)+" − "+peso(v.wh),"= "+peso(g.tax+t8-v.wh)]])}return r}},
  {t:"B. Regular corporate income tax vs MCIT",link:["corporations","Corporations"],f:[["gi","Gross income (sales − cost of sales)",4000000],["ded","Allowable deductions",2000000],["small","Small corporation? (1 = NTI ₱5M or below and assets ₱100M or below)",0]],
-  run:v=>{const ti=v.gi-v.ded,r=v.small==1?.2:.25,rcit=Math.max(0,ti)*r,mcit=.02*v.gi;return [["Taxable income",peso(ti)],["RCIT ("+pct(r)+")",peso(rcit)],["MCIT (2% of gross income)",peso(mcit)],["Tax due = higher of the two",peso(Math.max(rcit,mcit))+(mcit>rcit?" (MCIT)":" (RCIT)"),1]]}},
+  run:v=>{const ti=v.gi-v.ded,r=v.small==1?.2:.25,rcit=Math.max(0,ti)*r,mcit=.02*v.gi,hi=Math.max(rcit,mcit);return [
+   ["Taxable income",peso(ti),0,[peso(v.gi)+" − "+peso(v.ded),"= "+peso(ti)]],
+   ["RCIT ("+pct(r)+")",peso(rcit),0,[pct(r)+" × "+peso(Math.max(0,ti))+(v.small==1?" (small corporation)":""),"= "+peso(rcit)]],
+   ["MCIT (2% of gross income)",peso(mcit),0,["2% × "+peso(v.gi),"= "+peso(mcit)]],
+   ["Tax due = higher of the two",peso(hi)+(mcit>rcit?" (MCIT)":" (RCIT)"),1,["Higher of RCIT "+peso(rcit)+" and MCIT "+peso(mcit),"= "+peso(hi)]]]}},
  {t:"C. Fringe benefits tax",link:["fringe","Fringe Benefits"],f:[["mv","Monetary value of the benefit",100000],["rate","FBT rate (0.35 for most; 0.25 for NRA-NETB)",.35]],
-  run:v=>{const g=v.mv/(1-v.rate);return [["Grossed-up monetary value = MV ÷ (1 − rate)",peso(g)],["Fringe benefits tax",peso(g*v.rate),1]]}},
+  run:v=>{const g=v.mv/(1-v.rate);return [
+   ["Grossed-up monetary value = MV ÷ (1 − rate)",peso(g),0,[peso(v.mv)+" ÷ (100% − "+pct(v.rate)+")","= "+peso(v.mv)+" ÷ "+pct(1-v.rate),"= "+peso(g)]],
+   ["Fringe benefits tax",peso(g*v.rate),1,[peso(g)+" × "+pct(v.rate),"= "+peso(g*v.rate)]]]}},
  {t:"D. Donor's tax",link:["donors","Donor's Tax"],f:[["g","Total net gifts in the calendar year",750000]],
-  run:v=>[["Taxable gifts (over ₱250,000)",peso(Math.max(0,v.g-250000))],["Donor's tax (6%)",peso(.06*Math.max(0,v.g-250000)),1]]},
+  run:v=>{const tx=Math.max(0,v.g-250000);return [
+   ["Taxable gifts (over ₱250,000)",peso(tx),0,[peso(v.g)+" − ₱250,000","= "+peso(tx)]],
+   ["Donor's tax (6%)",peso(.06*tx),1,["6% × "+peso(tx),"= "+peso(.06*tx)]]]}},
  {t:"E. Estate tax (married decedent)",link:["estate","Estate Tax"],f:[["ex","Gross estate: exclusive property",19000000],["cp","Gross estate: conjugal/community property",26000000],["dex","Ordinary deductions: exclusive",1000000],["dcp","Ordinary deductions: conjugal/community",3000000],["fh","Family home included in gross estate",10000000],["ra","Amount received by heirs under RA 4917",0]],
-  run:v=>{const ge=v.ex+v.cp,after=ge-v.dex-v.dcp,sp=(v.cp-v.dcp)/2,spec=5000000+Math.min(v.fh,10000000)+v.ra+sp,te=Math.max(0,after-spec);
-   return [["Gross estate",peso(ge)],["After ordinary deductions",peso(after)],["Surviving spouse's share (half of net conjugal)",peso(sp)],["Special deductions: ₱5M standard + family home (max ₱10M) + RA 4917 + spouse's share",peso(spec)],["Taxable estate",peso(te)],["Estate tax (6%)",peso(.06*te),1]]}},
+  run:v=>{const ge=v.ex+v.cp,after=ge-v.dex-v.dcp,sp=(v.cp-v.dcp)/2,fh=Math.min(v.fh,10000000),spec=5000000+fh+v.ra+sp,te=Math.max(0,after-spec);return [
+   ["Gross estate",peso(ge),0,[peso(v.ex)+" + "+peso(v.cp),"= "+peso(ge)]],
+   ["After ordinary deductions",peso(after),0,[peso(ge)+" − "+peso(v.dex)+" − "+peso(v.dcp),"= "+peso(after)]],
+   ["Surviving spouse's share (half of net conjugal)",peso(sp),0,["("+peso(v.cp)+" − "+peso(v.dcp)+") ÷ 2","= "+peso(v.cp-v.dcp)+" ÷ 2","= "+peso(sp)]],
+   ["Special deductions",peso(spec),0,["Standard ₱5,000,000 + family home "+peso(fh)+(v.fh>10000000?" (capped)":"")+" + RA 4917 "+peso(v.ra)+" + spouse's share "+peso(sp),"= "+peso(spec)]],
+   ["Taxable estate",peso(te),0,[peso(after)+" − "+peso(spec),"= "+peso(te)]],
+   ["Estate tax (6%)",peso(.06*te),1,["6% × "+peso(te),"= "+peso(.06*te)]]]}},
  {t:"F. VAT payable",link:["vat","VAT"],f:[["vs","Vatable sales (exclusive of VAT)",1000000],["zr","Zero-rated sales",200000],["iv","Total creditable input VAT",0]],
-  run:v=>{const o=.12*v.vs,p=o-v.iv;return [["Output VAT (12% of vatable sales)",peso(o)],["Zero-rated sales (0% VAT)",peso(0)],["VAT payable",p<0?peso(-p)+" excess input VAT (carry over or refund)":peso(p),1]]}},
+  run:v=>{const o=.12*v.vs,p=o-v.iv;return [
+   ["Output VAT (12% of vatable sales)",peso(o),0,["12% × "+peso(v.vs),"= "+peso(o)]],
+   ["Zero-rated sales (0% VAT)",peso(0),0,["0% × "+peso(v.zr)+" = ₱0","Input VAT on zero-rated sales can still be claimed"]],
+   ["VAT payable",p<0?peso(-p)+" excess input VAT (carry over or refund)":peso(p),1,[peso(o)+" − "+peso(v.iv),"= "+peso(p)+(p<0?" (negative: excess input VAT)":"")]]]}},
  {t:"G. Installment sale",link:["installment","Installment Reporting"],f:[["sp","Selling price",1000000],["cost","Cost of property",600000],["mort","Mortgage assumed by buyer (0 if none)",700000],["dp","Downpayment + other payments in the year of sale",100000]],
-  run:v=>{const ex=Math.max(0,v.mort-v.cost),ip=v.dp+ex,cp=v.sp-v.mort+ex,gp=v.sp-v.cost,ratio=ip/v.sp;
-   return [["Excess of mortgage over cost",peso(ex)],["Initial payments (IP)",peso(ip)],["IP ÷ SP",pct(ratio)+(ratio<=.25?" — 25% test passed":" — over 25%: installment method not allowed")],["Contract price",peso(cp)],["Gross profit",peso(gp)],["Gross profit rate (GP ÷ CP)",pct(gp/cp)],["Income realized in the year of sale",peso(gp/cp*ip),1]]}},
+  run:v=>{const ex=Math.max(0,v.mort-v.cost),ip=v.dp+ex,cp=v.sp-v.mort+ex,gp=v.sp-v.cost,ratio=ip/v.sp;return [
+   ["Excess of mortgage over cost",peso(ex),0,[v.mort>v.cost?peso(v.mort)+" − "+peso(v.cost)+" = "+peso(ex):"Mortgage "+peso(v.mort)+" is not more than cost "+peso(v.cost)+", so ₱0"]],
+   ["Initial payments (IP)",peso(ip),0,[peso(v.dp)+" + "+peso(ex),"= "+peso(ip)]],
+   ["IP ÷ SP",pct(ratio)+(ratio<=.25?" — 25% test passed":" — over 25%: installment method not allowed"),0,[peso(ip)+" ÷ "+peso(v.sp),"= "+pct(ratio)+(ratio<=.25?" ≤ 25%":" > 25%")]],
+   ["Contract price",peso(cp),0,[peso(v.sp)+" − "+peso(v.mort)+" + "+peso(ex),"= "+peso(cp)]],
+   ["Gross profit",peso(gp),0,[peso(v.sp)+" − "+peso(v.cost),"= "+peso(gp)]],
+   ["Gross profit rate (GP ÷ CP)",pct(gp/cp),0,[peso(gp)+" ÷ "+peso(cp),"= "+pct(gp/cp)]],
+   ["Income realized in the year of sale",peso(gp/cp*ip),1,[pct(gp/cp)+" × "+peso(ip),"= "+peso(gp/cp*ip)]]]}},
  {t:"H. Vanishing deduction percentage",link:["estate","Estate Tax"],f:[["y","Years between the two deaths (or gift and death)",2.5]],
-  run:v=>{const y=v.y,p=y<=1?1:y<=2?.8:y<=3?.6:y<=4?.4:y<=5?.2:0;return [["Percentage allowed",pct(p),1],["Scale","100 / 80 / 60 / 40 / 20%, none after 5 years"]]}},
+  run:v=>{const y=v.y,p=y<=1?1:y<=2?.8:y<=3?.6:y<=4?.4:y<=5?.2:0,band=y<=1?"1 year or less":y<=5?"more than "+(Math.ceil(y)-1)+" but not more than "+Math.ceil(y)+" years":"more than 5 years";return [
+   ["Percentage allowed",pct(p),1,[y+" years is "+band,"→ "+pct(p)]],
+   ["Scale","100 / 80 / 60 / 40 / 20%, none after 5 years"]]}},
 ];
 const FX=[
  ["<b>Income tax</b> = Fixed amount at the bracket floor + Rate × (Net taxable income − Bracket floor)",
@@ -607,7 +648,15 @@ function buildCalcs(){const box=$("tax-calcs");if(!box||box.dataset.done)return;
   s.innerHTML='<h3>'+c.t+'</h3><div class="fx calcfx"><span class="lbl">Formula</span>'+FX[ci].map(l=>'<div>'+l+'</div>').join("")+'</div>'+c.f.map(f=>'<label class="cf" for="c'+ci+f[0]+'"><span>'+f[1]+'</span><input id="c'+ci+f[0]+'" type="number" inputmode="decimal" step="any" value="'+f[2]+'"></label>').join("")
    +'<div class="out"></div><p class="calc-l">Notes: <a class="xl" href="#tax-'+c.link[0]+'">'+c.link[1]+'</a></p>';
   box.appendChild(s);const upd=()=>{const v={};c.f.forEach(f=>v[f[0]]=parseFloat($("c"+ci+f[0]).value)||0);
-   s.querySelector(".out").innerHTML=c.run(v).map(r=>'<div class="row'+(r[2]?" res":"")+'"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join("")};
+   s.querySelector(".out").innerHTML=c.run(v).map((r,ri)=>'<div class="row'+(r[2]?" res":"")+'"><span>'+r[0]+'</span><b>'+r[1]+'</b>'
+     +(r[3]?'<button type="button" class="wk" aria-expanded="false" aria-label="Show the computation for '+r[0].replace(/"/g,"")+'">=</button><div class="work" hidden><span class="lbl">Computation</span>'+r[3].map(x=>'<div>'+x+'</div>').join("")+'</div>':'')+'</div>').join("")};
+  const out=s.querySelector(".out"),hov=matchMedia("(hover: hover)").matches;
+  const closeAll=()=>{s.querySelectorAll(".work").forEach(x=>{x.hidden=true;delete x.dataset.pin});s.querySelectorAll(".wk").forEach(x=>x.setAttribute("aria-expanded","false"))};
+  out.addEventListener("click",e=>{const row=e.target.closest(".row");if(!row||!(e.target.closest(".wk")||e.target.closest(".row > b")))return;
+   const w=row.querySelector(".work"),b=row.querySelector(".wk");if(!w)return;const pinned=w.dataset.pin==="1";closeAll();
+   if(!pinned){w.hidden=false;w.dataset.pin="1";b.setAttribute("aria-expanded","true")}});
+  if(hov){out.addEventListener("mouseover",e=>{const v=e.target.closest(".row > b");if(!v)return;const w=v.parentElement.querySelector(".work");if(w&&w.hidden){w.hidden=false;w.dataset.hov="1"}});
+   out.addEventListener("mouseout",e=>{const v=e.target.closest(".row > b");if(!v||v.contains(e.relatedTarget))return;const w=v.parentElement.querySelector(".work");if(w&&w.dataset.hov&&w.dataset.pin!=="1"){w.hidden=true}if(w)delete w.dataset.hov});}
   s.querySelectorAll("input").forEach(i=>i.addEventListener("input",upd));upd()})}
 
 route();
