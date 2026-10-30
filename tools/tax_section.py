@@ -252,6 +252,28 @@ const CALCS=[
    ["Percentage allowed",pct(p),1,[y+" years is "+band,"→ "+pct(p)]],
    ["Scale","100 / 80 / 60 / 40 / 20%, none after 5 years"]]}},
 ];
+const DN=[
+ ["<b>Already taken out.</b> Enter the NET taxable income, after deductions.",
+  "<b>Self-employed or professional:</b> Gross sales/receipts − Cost of sales = Gross income, then subtract EITHER itemized deductions OR the OSD (40% of gross sales/receipts). Choose only one.",
+  "<b>Purely an employee:</b> no business deductions. Only exclusions are removed: 13th month pay and other benefits up to ₱90,000, de minimis benefits, and SSS/PhilHealth/Pag-IBIG contributions."],
+ ["<b>None.</b> The 8% is applied to GROSS sales/receipts, so itemized deductions and the OSD are not allowed. That is the trade-off for a simple flat rate.",
+  "The only thing subtracted is ₱250,000, and only for a purely self-employed person. A mixed income earner already used it on compensation.",
+  "Choose 8% when business expenses are small. When expenses are big, graduated rates + deductions usually give a lower tax."],
+ ["<b>RCIT: yes.</b> Allowable deductions (itemized, or OSD at 40% of GROSS INCOME for corporations) are subtracted to get taxable income.",
+  "<b>MCIT: none.</b> It is 2% of GROSS income on purpose: a floor so a company with large deductions or a loss still pays some tax."],
+ ["<b>None in computing FBT.</b> The tax is on the monetary value of the benefit, grossed up.",
+  "For the employer, the benefit and the FBT paid are deductible business expenses in its own income tax."],
+ ["<b>Only the ₱250,000 yearly exemption.</b> Donor's tax has no expense-type deductions.",
+  "Use NET gifts: the value of the gift less any debt or mortgage the donee assumes. Exempt gifts (for example, to the government or accredited non-profits) are left out of total gifts."],
+ ["<b>Yes, two kinds.</b> Ordinary deductions (claims against the estate, losses, unpaid mortgage, transfers for public use), split into exclusive and conjugal.",
+  "Special deductions: ₱5,000,000 standard, family home up to ₱10,000,000, RA 4917 benefits. The surviving spouse's share is also removed because it never belonged to the decedent."],
+ ["<b>No deductions in VAT.</b> Instead, input VAT paid on purchases is CREDITED against output VAT.",
+  "Only a VAT-registered seller with valid VAT invoices or receipts can claim input VAT."],
+ ["<b>Not a tax yet, so no deductions here.</b> This only decides how much of the gain is reported this year.",
+  "The income realized goes into gross income, where the regular deductions apply."],
+ ["<b>This percentage is itself a deduction</b> in estate tax (the vanishing deduction, or property previously taxed).",
+  "It reduces the estate for property the decedent received by inheritance or gift within 5 years before death, so the same property is not fully taxed twice."],
+];
 const FX=[
  ["<b>Income tax</b> = Fixed amount at the bracket floor + Rate × (Net taxable income − Bracket floor)",
   "Brackets: up to ₱250,000 → 0% · over ₱250,000 → 15% · over ₱400,000 → ₱22,500 + 20% · over ₱800,000 → ₱102,500 + 25% · over ₱2M → ₱402,500 + 30% · over ₱8M → ₱2,202,500 + 35%"],
@@ -285,7 +307,7 @@ const FX=[
 ];
 function buildCalcs(){const box=$("tax-calcs");if(!box||box.dataset.done)return;box.dataset.done=1;
  CALCS.forEach((c,ci)=>{const s=document.createElement("section");s.className="calc";
-  s.innerHTML='<h3>'+c.t+'</h3><div class="fx calcfx"><span class="lbl">Formula</span>'+FX[ci].map(l=>'<div>'+l+'</div>').join("")+'</div>'+c.f.map(f=>'<label class="cf" for="c'+ci+f[0]+'"><span>'+f[1]+'</span><input id="c'+ci+f[0]+'" type="number" inputmode="decimal" step="any" value="'+f[2]+'"></label>').join("")
+  s.innerHTML='<h3>'+c.t+'</h3><div class="fx calcfx"><span class="lbl">Formula</span>'+FX[ci].map(l=>'<div>'+l+'</div>').join("")+'</div><div class="dn"><span class="lbl">Deductions</span>'+DN[ci].map(l=>'<div>'+l+'</div>').join("")+'</div>'+c.f.map(f=>'<label class="cf" for="c'+ci+f[0]+'"><span>'+f[1]+'</span><input id="c'+ci+f[0]+'" type="number" inputmode="decimal" step="any" value="'+f[2]+'"></label>').join("")
    +'<div class="out"></div><p class="calc-l">Notes: <a class="xl" href="#tax-'+c.link[0]+'">'+c.link[1]+'</a></p>';
   box.appendChild(s);const upd=()=>{const v={};c.f.forEach(f=>v[f[0]]=parseFloat($("c"+ci+f[0]).value)||0);
    s.querySelector(".out").innerHTML=c.run(v).map((r,ri)=>'<div class="row'+(r[2]?" res":"")+'"><span>'+r[0]+'</span><b>'+r[1]+'</b>'
@@ -384,6 +406,8 @@ a.tab.xl{text-decoration:none}
 .calc h3{margin-top:0}
 .calcfx{background:var(--bg);margin:0 0 14px}
 .calcfx .lbl{color:var(--deep)}
+.dn{background:#e6f0fb;border-left:4px solid #3d6fb4;border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:6px}
+.dn .lbl{color:#2f5a96}
 .cf{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .cf span{font-size:.92em}
 .cf input{font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fffdf3;color:#1f4e9e;max-width:100%}
