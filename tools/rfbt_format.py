@@ -1,6 +1,7 @@
 """Formats flashcard answers for display: enumerations become lists, key words and figures become bold.
 Markup is produced as safe HTML from escaped text."""
 import html, re
+from rfbt_ask import ask, STEM
 
 # Hand-written layouts for cards whose automatic split is not good enough.
 # Syntax: lines; "- " = bullet, "1. " = numbered; **bold**.
@@ -172,6 +173,9 @@ def auto_lines(a):
 def fmt(front, a):
     src = OVERRIDES.get(front)
     lines = src.split("\n") if src else auto_lines(a)
+    if front in STEM:
+        assert src and lines[0].rstrip().endswith(":"), front
+        lines = lines[1:]
     big = (not src) and len(lines) == 1 and len(a) <= 45
     return big, _from_lines(lines)
 
@@ -195,7 +199,7 @@ CAPS_RE = re.compile(r"\b(?:NOT|EXCEPT|ONLY|FEWER|MORE|EXCLUDED|BOTH|TOTAL|WITHO
 NUM_RE = re.compile(r"₱\d{1,3}(?:,\d{3})*|\b\d+(?:\.\d+)?%|\b\d+(?:st|nd|rd|th)?\b(?:\s(?:days?|years?|months?|hours?|contributions|monthly contributions|deliveries))?")
 
 def qfmt(front):
-    t = html.escape(front, quote=False)
+    t = html.escape(ask(front), quote=False)
     marks = []
     for rx, cls in ((CAPS_RE, "k"), (TERM_RE, "t"), (NUM_RE, "k")):
         for m in rx.finditer(t):
@@ -206,4 +210,8 @@ def qfmt(front):
         out.append(t[pos:a]); out.append(f'<b class="{cls}">{t[a:b]}</b>'); pos = b
     out.append(t[pos:])
     s = "".join(out).replace("___", '<span class="blank">_____</span>')
+    if "\n" in s:
+        a, b = s.split("\n", 1)
+        s = a + '<span class="stem">' + b + '</span>'
+
     return s
