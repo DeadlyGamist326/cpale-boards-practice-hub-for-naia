@@ -197,6 +197,7 @@ CSS = """
 .card .side{font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .card .fa{font-weight:bold;color:var(--deep);font-size:21px}
 .card .src{font-size:13px;color:var(--muted)}
+.card .mini{font-size:13px;line-height:1.4;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:6px 8px;background:rgba(255,255,255,.6)}
 .fcbar{display:flex;gap:8px;justify-content:space-between;align-items:center;margin:14px 0}
 .fcbar button{font-size:15px;font-weight:bold;background:var(--bg);color:var(--deep);border:1.5px solid var(--rose);border-radius:8px;padding:10px 14px}
 .fcbar .flip{background:var(--rose);color:#ffffff;flex:1}
@@ -243,9 +244,10 @@ function initDeck(el){
     r.onload=()=>{try{const d=JSON.parse(r.result);if(d.kind!=="rfbt-crops")throw 0;cropsSave(Object.assign({},CROPS.map,d.crops)).then(()=>{stat();paintCrop()});cst.textContent="Loading…"}catch(x){cst.textContent="That file is not a crops file."}};r.readAsText(f)};
   cropsLoad().then(()=>{stat();paintCrop()});
   const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
-  function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);
-    card.innerHTML=back?'<span class="side">Answer</span><span class="fa">'+esc(c[1])+'</span><span class="src">'+esc(c[2])+'</span>'
-                       :'<span class="side">Question</span><span>'+esc(c[0])+'</span><span class="src">Tap to show the answer</span>';
+  const seen=new Set();
+  function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);if(back)seen.add(order[i]);
+    card.innerHTML=back?'<span class="mini">'+esc(c[0])+'</span><span class="side">Answer</span><span class="fa">'+esc(c[1])+'</span><span class="src">'+esc(c[2])+'</span>'
+                       :'<span class="side">Question</span><span>'+esc(c[0])+'</span>'+(seen.has(order[i])?'<span class="mini">'+esc(c[1])+'</span>':'<span class="src">Tap to show the answer</span>');
     cnt.textContent=(i+1)+" / "+cards.length;open=hov&&back&&card.matches(":hover");paintCrop();try{localStorage.setItem(key,JSON.stringify({order,i}))}catch(e){}}
   const go=d=>{i=(i+d+cards.length)%cards.length;back=false;draw()};
   card.onclick=()=>{back=!back;draw()};
