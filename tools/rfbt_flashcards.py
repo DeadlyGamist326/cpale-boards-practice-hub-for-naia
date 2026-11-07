@@ -1,6 +1,7 @@
 """RFBT flashcards, built strictly from the topics in Naia's RFBT handouts (Social Security Law, Labor Standards), written as short Q&A of the rules with their legal sources. No handout prose or branding.
 Each card: (front, back, source)."""
 import html, json, hashlib
+from rfbt_format import fmt as _fmt
 
 SSL = [
  # Policy and the SSS / Commission
@@ -195,7 +196,11 @@ CSS = """
 .card{display:flex;flex-direction:column;justify-content:center;gap:10px;width:100%;min-height:260px;border:2px solid var(--line);border-radius:16px;background:var(--soft);padding:22px 20px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:19px;line-height:1.5;color:var(--ink)}
 .card.flipped{background:var(--pink);border-color:var(--rose)}
 .card .side{font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.card .fa{font-weight:bold;color:var(--deep);font-size:21px}
+.card .fa{color:var(--ink);font-size:18px;line-height:1.5;text-align:left;align-self:center;max-width:100%}
+.card .fa p{margin:0 0 6px}.card .fa p:last-child{margin-bottom:0}
+.card .fa ul,.card .fa ol{margin:4px 0 6px;padding-left:22px}.card .fa li{margin-bottom:4px}
+.card .fa b{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
+.card .fa.big{text-align:center;font-weight:bold;color:var(--deep);font-size:21px}.card .fa.big b{background:none;padding:0}
 .card .src{font-size:13px;color:var(--muted)}
 .card .mini{font-size:13px;line-height:1.4;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:6px 8px;background:rgba(255,255,255,.6)}
 .fcbar{display:flex;gap:8px;justify-content:space-between;align-items:center;margin:14px 0}
@@ -214,7 +219,7 @@ CSS = """
 .fclist ol{padding-left:22px}
 .fclist li{margin-bottom:10px}
 .fclist .a{display:block;color:var(--deep);font-weight:bold}
-@media (max-width:600px){.card{font-size:20px;min-height:300px}.card .fa{font-size:22px}.fcbar button{font-size:17px;padding:12px 14px}}
+@media (max-width:600px){.card{font-size:20px;min-height:300px}.card .fa{font-size:19px}.card .fa.big{font-size:22px}.fcbar button{font-size:17px;padding:12px 14px}}
 """
 
 JS = r"""
@@ -246,7 +251,7 @@ function initDeck(el){
   const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const seen=new Set();
   function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);if(back)seen.add(order[i]);
-    card.innerHTML=back?'<span class="mini">'+esc(c[0])+'</span><span class="side">Answer</span><span class="fa">'+esc(c[1])+'</span><span class="src">'+esc(c[2])+'</span>'
+    card.innerHTML=back?'<span class="mini">'+esc(c[0])+'</span><span class="side">Answer</span><div class="fa'+(c[4]?' big':'')+'">'+c[5]+'</div><span class="src">'+esc(c[2])+'</span>'
                        :'<span class="side">Question</span><span>'+esc(c[0])+'</span>'+(seen.has(order[i])?'<span class="mini">'+esc(c[1])+'</span>':'<span class="src">Tap to show the answer</span>');
     cnt.textContent=(i+1)+" / "+cards.length;open=hov&&back&&card.matches(":hover");paintCrop();try{localStorage.setItem(key,JSON.stringify({order,i}))}catch(e){}}
   const go=d=>{i=(i+d+cards.length)%cards.length;back=false;draw()};
@@ -265,7 +270,7 @@ def render():
     boxes, views = [], []
     for slug, title, blurb, cards in DECKS:
         boxes.append(f'<a class="sec xl" href="#fc-{slug}"><b>{title}</b>{blurb}<small>{len(cards)} flashcards</small></a>')
-        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] for c in cards], ensure_ascii=False).replace("</", "<\\/")
+        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] + list(_fmt(c[0], c[1])) for c in cards], ensure_ascii=False).replace("</", "<\\/")
         lst = "".join(f'<li>{html.escape(f)}<span class="a">{html.escape(b)}</span></li>' for f, b, _ in cards)
         views.append(f'''<div class="fcv" id="fc-{slug}" hidden><div class="bar"><button type="button" class="back" data-home>← Home</button></div>
 <p class="crumb">RFBT</p><h2>{title}</h2><p class="fchint">Tap the card to flip it. Use Next and Back to move through the deck.</p>
