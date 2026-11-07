@@ -1,7 +1,7 @@
 """RFBT flashcards, built strictly from the topics in Naia's RFBT handouts (Social Security Law, Labor Standards), written as short Q&A of the rules with their legal sources. No handout prose or branding.
 Each card: (front, back, source)."""
 import html, json, hashlib
-from rfbt_format import fmt as _fmt
+from rfbt_format import fmt as _fmt, qfmt as _qfmt
 
 SSL = [
  # Policy and the SSS / Commission
@@ -200,6 +200,10 @@ CSS = """
 .card .fa p{margin:0 0 6px}.card .fa p:last-child{margin-bottom:0}
 .card .fa ul,.card .fa ol{margin:4px 0 6px;padding-left:22px}.card .fa li{margin-bottom:4px}
 .card .fa b{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
+.card b.t{color:var(--deep);font-weight:bold}
+.card .fq b.t{text-transform:uppercase;letter-spacing:.2px}
+.card b.k{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
+.card .blank{letter-spacing:1px;color:var(--deep)}
 .card .fa.big{text-align:center;font-weight:bold;color:var(--deep);font-size:21px}.card .fa.big b{background:none;padding:0}
 .card .src{font-size:13px;color:var(--muted)}
 .card .mini{font-size:13px;line-height:1.4;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:6px 8px;background:rgba(255,255,255,.6)}
@@ -251,8 +255,8 @@ function initDeck(el){
   const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const seen=new Set();
   function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);if(back)seen.add(order[i]);
-    card.innerHTML=back?'<span class="mini">'+esc(c[0])+'</span><span class="side">Answer</span><div class="fa'+(c[4]?' big':'')+'">'+c[5]+'</div><span class="src">'+esc(c[2])+'</span>'
-                       :'<span class="side">Question</span><span>'+esc(c[0])+'</span>'+(seen.has(order[i])?'<span class="mini">'+esc(c[1])+'</span>':'<span class="src">Tap to show the answer</span>');
+    card.innerHTML=back?'<span class="mini">'+c[6]+'</span><span class="side">Answer</span><div class="fa'+(c[4]?' big':'')+'">'+c[5]+'</div><span class="src">'+esc(c[2])+'</span>'
+                       :'<span class="side">Question</span><span class="fq">'+c[6]+'</span>'+(seen.has(order[i])?'<span class="mini">'+esc(c[1])+'</span>':'<span class="src">Tap to show the answer</span>');
     cnt.textContent=(i+1)+" / "+cards.length;open=hov&&back&&card.matches(":hover");paintCrop();try{localStorage.setItem(key,JSON.stringify({order,i}))}catch(e){}}
   const go=d=>{i=(i+d+cards.length)%cards.length;back=false;draw()};
   card.onclick=()=>{back=!back;draw()};
@@ -270,7 +274,7 @@ def render():
     boxes, views = [], []
     for slug, title, blurb, cards in DECKS:
         boxes.append(f'<a class="sec xl" href="#fc-{slug}"><b>{title}</b>{blurb}<small>{len(cards)} flashcards</small></a>')
-        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] + list(_fmt(c[0], c[1])) for c in cards], ensure_ascii=False).replace("</", "<\\/")
+        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] + list(_fmt(c[0], c[1])) + [_qfmt(c[0])] for c in cards], ensure_ascii=False).replace("</", "<\\/")
         lst = "".join(f'<li>{html.escape(f)}<span class="a">{html.escape(b)}</span></li>' for f, b, _ in cards)
         views.append(f'''<div class="fcv" id="fc-{slug}" hidden><div class="bar"><button type="button" class="back" data-home>← Home</button></div>
 <p class="crumb">RFBT</p><h2>{title}</h2><p class="fchint">Tap the card to flip it. Use Next and Back to move through the deck.</p>

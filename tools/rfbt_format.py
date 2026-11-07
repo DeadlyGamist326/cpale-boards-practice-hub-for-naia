@@ -174,3 +174,36 @@ def fmt(front, a):
     lines = src.split("\n") if src else auto_lines(a)
     big = (not src) and len(lines) == 1 and len(a) <= 45
     return big, _from_lines(lines)
+
+# ---- question side ----
+TERMS = sorted(r"""Social Security Act of 2018|Social Security Commission|SSS|Commission|Chairperson|Vice-Chairperson|appointive|term of office|
+employer|employee|self-employed|employment|dependents?|dependent child|primary beneficiaries|secondary beneficiaries|beneficiaries|illegitimate children|legitimate children|
+compensation|monthly salary credit|average monthly salary credit|average daily salary credit|AMSC|ADSC|semester|quarter|credited years of service|contingency|contingencies|
+compulsory coverage|coverage|voluntary|kasambahays?|household helpers|OFWs?|sea-based|land-based|manning agency|manning agencies|permanent migrants|
+Annual Register|business permit|contributions?|remit|late remittance|penalty|prescriptive period|exempt|
+monthly pension|minimum monthly pension|additional benefit allowance|dependents' pension|retirement pension|retiree|retirement|lump sum|death benefit|
+permanent total disability|permanent partial disability|disability pension|disability|funeral benefit|sickness benefit|sickness allowance|sickness benefit|sickness|
+unemployment insurance|involuntary separation|compensable contingencies|misappropriates|false statements|
+Labor Code|Presidential Decree|basic policy|in favor of labor|diminution of benefits|labor standards|wage|salary|basic pay|basic salary|wage order|
+regional minimum wage|collective bargaining|BMBEs?|holiday pay|regular holidays?|double regular holiday|special \(non-working\) days?|premium pay|rest day|weekly rest day|
+managerial employee|managerial staff|field personnel|National Heroes Day|Araw ng Kagitingan|leave WITHOUT pay|successive regular holidays|
+normal hours of work|hours worked|meal period|undertime|overtime|compulsory overtime|night shift differential|night shift|hourly rate|
+13th month pay|PD 851|service incentive leave|vacation and sick leaves|maternity leave|postnatal leave|emergency termination of pregnancy|miscarriage|
+Expanded Maternity Leave Law|child's father|alternate caregiver|paternity leave|cohabiting|solo parents?|parental leave|daily wage|hazards|independent contractors?|spouses|managing the household|at least one year of service|father is dead""".replace("\n", "").split("|"), key=len, reverse=True)
+TERM_RE = re.compile(r"(?<![\w-])(?:" + "|".join(TERMS) + r")(?![\w-])", re.I)
+CAPS_RE = re.compile(r"\b(?:NOT|EXCEPT|ONLY|FEWER|MORE|EXCLUDED|BOTH|TOTAL|WITHOUT|THIS|HIGHER|ORGANIZED|UNORGANIZED|SIZE|PENSION|MONTHLY|FIRST)\b")
+NUM_RE = re.compile(r"₱\d{1,3}(?:,\d{3})*|\b\d+(?:\.\d+)?%|\b\d+(?:st|nd|rd|th)?\b(?:\s(?:days?|years?|months?|hours?|contributions|monthly contributions|deliveries))?")
+
+def qfmt(front):
+    t = html.escape(front, quote=False)
+    marks = []
+    for rx, cls in ((CAPS_RE, "k"), (TERM_RE, "t"), (NUM_RE, "k")):
+        for m in rx.finditer(t):
+            if any(not (m.end() <= a or m.start() >= b) for a, b, _ in marks): continue
+            marks.append((m.start(), m.end(), cls))
+    out, pos = [], 0
+    for a, b, cls in sorted(marks):
+        out.append(t[pos:a]); out.append(f'<b class="{cls}">{t[a:b]}</b>'); pos = b
+    out.append(t[pos:])
+    s = "".join(out).replace("___", '<span class="blank">_____</span>')
+    return s
