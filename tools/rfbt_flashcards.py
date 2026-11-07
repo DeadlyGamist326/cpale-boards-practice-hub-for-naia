@@ -1,7 +1,7 @@
 """RFBT flashcards, built strictly from the topics in Naia's RFBT handouts (Social Security Law, Labor Standards), written as short Q&A of the rules with their legal sources. No handout prose or branding.
 Each card: (front, back, source)."""
 import html, json, hashlib
-from rfbt_format import fmt as _fmt, qfmt as _qfmt
+from rfbt_format import fmt as _fmt, qfmt as _qfmt, decap as _decap
 from rfbt_ask import ask as _ask, ASK as _ASK, STEM as _STEM
 
 SSL = [
@@ -202,10 +202,9 @@ CSS = """
 .card .fa ul,.card .fa ol{margin:4px 0 6px;padding-left:22px}.card .fa li{margin-bottom:4px}
 .card .fa b{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
 .card b.t{color:var(--deep);font-weight:bold}
-.card .fq b.t{text-transform:uppercase;letter-spacing:.2px}
 .card b.k{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
 .card .stem{display:block;margin-top:10px;font-size:.92em;color:var(--deep);font-style:italic}
-.card .fq .stem b.t{text-transform:none;background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
+.card .fq .stem b.t{background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
 .card .blank{letter-spacing:1px;color:var(--deep)}
 .card .fa.big{text-align:center;font-weight:bold;color:var(--deep);font-size:21px}.card .fa.big b{background:none;padding:0}
 .card .src{font-size:13px;color:var(--muted)}
@@ -281,7 +280,7 @@ def render():
     boxes, views = [], []
     for slug, title, blurb, cards in DECKS:
         boxes.append(f'<a class="sec xl" href="#fc-{slug}"><b>{title}</b>{blurb}<small>{len(cards)} flashcards</small></a>')
-        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] + list(_fmt(c[0], c[1])) + [_qfmt(c[0])] for c in cards], ensure_ascii=False).replace("</", "<\\/")
+        data = json.dumps([[c[0], _decap(c[1]), c[2]] + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] + list(_fmt(c[0], c[1])) + [_qfmt(c[0])] for c in cards], ensure_ascii=False).replace("</", "<\\/")
         lst = "".join(f'<li>{html.escape(_ask(f))}<span class="a">{html.escape(b)}</span></li>' for f, b, _ in cards)
         views.append(f'''<div class="fcv" id="fc-{slug}" hidden><div class="bar"><button type="button" class="back" data-home>← Home</button></div>
 <p class="crumb">RFBT</p><h2>{title}</h2><p class="fchint">Tap the card to flip it. Swipe left for the next card, right for the previous one. On a computer: Space flips, then Space again goes to the next card; click the blank sides for Back and Next.</p>

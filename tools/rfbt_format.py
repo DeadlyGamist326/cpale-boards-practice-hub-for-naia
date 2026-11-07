@@ -171,6 +171,27 @@ def auto_lines(a):
     sents = re.split(r"(?<=[.)])\s+(?=[A-Z])", a)
     return sents
 
+# user request: no ALL-CAPS emphasis; bold + color is enough. Acronyms (SSS, COLA, RA...) stay.
+DECAP = "AND ARE DAY DIFFERENTIAL EXCEPT EXCLUDED FEWER FIVE HOLIDAY MORE NIGHT NOT ON OR PAY PREMIUM SHIFT THAT TOTAL WITHOUT ONLY BOTH ALL HIGHER".split()
+DECAP_RE = re.compile(r"\b(?:" + "|".join(DECAP) + r")\b")
+
+def decap(h):
+    """Lower-case emphasis caps in the text of an HTML string (sentence starts keep a capital)."""
+    out, start = [], True
+    for tok in re.split(r"(<[^>]+>)", h):
+        if tok.startswith("<"):
+            if re.match(r"<(?:li|p)[\s>]", tok) or tok.startswith('<span class="stem"'): start = True
+            out.append(tok); continue
+        def sub(m, tok=tok, start=start):
+            w = m.group(0).lower()
+            before = tok[:m.start()].rstrip()
+            if (start and not before) or before.endswith((".", "?", "!")):
+                w = w.capitalize()
+            return w
+        out.append(DECAP_RE.sub(sub, tok))
+        if tok.strip(): start = False
+    return "".join(out)
+
 def keymark(h, front, open_tag):
     """Bold the card's KEYS phrases in text outside existing <b> tags."""
     ph = [p for p in KEYS.get(front, "").split("|") if p]
@@ -196,7 +217,7 @@ def fmt(front, a):
         assert src and lines[0].rstrip().endswith(":"), front
         lines = lines[1:]
     big = (not src) and len(lines) == 1 and len(a) <= 45
-    return big, (_from_lines(lines) if big else keymark(_from_lines(lines), front, "<b>"))
+    return big, decap(_from_lines(lines) if big else keymark(_from_lines(lines), front, "<b>"))
 
 # ---- question side ----
 TERMS = sorted(r"""Social Security Act of 2018|Social Security Commission|SSS|Commission|Chairperson|Vice-Chairperson|appointive|term of office|
@@ -234,4 +255,4 @@ def qfmt(front):
         a, b = s.split("\n", 1)
         s = a + '<span class="stem">' + b + '</span>'
 
-    return s
+    return decap(s)
