@@ -1,6 +1,6 @@
 """RFBT flashcards, built strictly from the topics in Naia's RFBT handouts (Social Security Law, Labor Standards), written as short Q&A of the rules with their legal sources. No handout prose or branding.
 Each card: (front, back, source)."""
-import html, json
+import html, json, hashlib
 
 SSL = [
  # Policy and the SSS / Commission
@@ -202,6 +202,12 @@ CSS = """
 .fcbar .flip{background:var(--rose);color:#ffffff;flex:1}
 .fcmeta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
 .fcmeta button{background:none;border:0;color:var(--rose);font-weight:bold;font-size:14px;padding:4px 0}
+.showcrop{display:block;width:100%;margin-top:10px;font-size:15px;font-weight:bold;background:var(--bg);color:var(--deep);border:1.5px dashed var(--rose);border-radius:8px;padding:10px}
+.crop{margin:10px 0 0;border:1.5px solid var(--rose);border-radius:12px;padding:8px;background:#ffffff}
+.crop img{display:block;width:100%;height:auto}
+.crop figcaption{font-size:13px;color:var(--muted);margin-top:6px;text-align:center}
+.croptools{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:18px;font-size:14px;color:var(--muted)}
+.croptools .cl{cursor:pointer;color:var(--deep);font-weight:bold;border:1.5px solid var(--rose);border-radius:8px;padding:7px 12px}
 .fclist{margin-top:22px}
 .fclist summary{cursor:pointer;font-weight:bold;color:var(--deep)}
 .fclist ol{padding-left:22px}
@@ -211,17 +217,36 @@ CSS = """
 """
 
 JS = r"""
+const CROPS={map:{},ready:null};
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open("hubcrops",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+function cropsLoad(){if(!CROPS.ready)CROPS.ready=idb().then(db=>new Promise(res=>{const t=db.transaction("kv").objectStore("kv").get("crops");t.onsuccess=()=>{CROPS.map=t.result||{};res()};t.onerror=()=>res()})).catch(()=>{});return CROPS.ready}
+function cropsSave(m){CROPS.map=m;return idb().then(db=>new Promise(res=>{const tx=db.transaction("kv","readwrite");tx.objectStore("kv").put(m,"crops");tx.oncomplete=res;tx.onerror=res})).catch(()=>{})}
 function initDeck(el){
   if(!el||el.dataset.ok)return;el.dataset.ok=1;
   const cards=JSON.parse(el.querySelector("script.deck").textContent),key="deck-"+el.id;
   let order=cards.map((_,i)=>i),i=0,back=false;
   try{const s=JSON.parse(localStorage.getItem(key)||"null");if(s&&s.order&&s.order.length===cards.length){order=s.order;i=s.i||0}}catch(e){}
-  const card=el.querySelector(".card"),cnt=el.querySelector(".cnt");
+  const card=el.querySelector(".card"),cnt=el.querySelector(".cnt"),slug=el.id.slice(3);
+  const sc=el.querySelector(".showcrop"),fig=el.querySelector(".crop"),cst=el.querySelector(".cstat"),hov=matchMedia("(hover: hover)").matches;
+  let open=false;
+  function cropFor(){return back?CROPS.map[slug+":"+cards[order[i]][3]]:null}
+  function paintCrop(){const c=cropFor();
+    if(!c){sc.hidden=true;fig.hidden=true;return}
+    fig.querySelector("img").src=c.img;fig.querySelector("figcaption").textContent=c.ref;
+    sc.hidden=hov;fig.hidden=!open;sc.textContent=open?"Hide handout excerpt":"Show where it is in the handout"}
+  function stat(){const n=Object.keys(CROPS.map).filter(k=>k.startsWith(slug+":")).length;cst.textContent=n?n+" handout crops loaded on this device":"No crops loaded on this device"}
+  sc.onclick=()=>{open=!open;paintCrop()};
+  if(hov){card.addEventListener("mouseenter",()=>{if(cropFor()){open=true;paintCrop()}});
+    const out=e=>{const t=e.relatedTarget;if(t&&(card.contains(t)||fig.contains(t)))return;open=false;paintCrop()};
+    card.addEventListener("mouseleave",out);fig.addEventListener("mouseleave",out)}
+  el.querySelector(".fcload").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{try{const d=JSON.parse(r.result);if(d.kind!=="rfbt-crops")throw 0;cropsSave(Object.assign({},CROPS.map,d.crops)).then(()=>{stat();paintCrop()});cst.textContent="Loading…"}catch(x){cst.textContent="That file is not a crops file."}};r.readAsText(f)};
+  cropsLoad().then(()=>{stat();paintCrop()});
   const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
   function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);
     card.innerHTML=back?'<span class="side">Answer</span><span class="fa">'+esc(c[1])+'</span><span class="src">'+esc(c[2])+'</span>'
                        :'<span class="side">Question</span><span>'+esc(c[0])+'</span><span class="src">Tap to show the answer</span>';
-    cnt.textContent=(i+1)+" / "+cards.length;try{localStorage.setItem(key,JSON.stringify({order,i}))}catch(e){}}
+    cnt.textContent=(i+1)+" / "+cards.length;open=hov&&back&&card.matches(":hover");paintCrop();try{localStorage.setItem(key,JSON.stringify({order,i}))}catch(e){}}
   const go=d=>{i=(i+d+cards.length)%cards.length;back=false;draw()};
   card.onclick=()=>{back=!back;draw()};
   el.querySelector(".flip").onclick=()=>{back=!back;draw()};
@@ -238,13 +263,16 @@ def render():
     boxes, views = [], []
     for slug, title, blurb, cards in DECKS:
         boxes.append(f'<a class="sec xl" href="#fc-{slug}"><b>{title}</b>{blurb}<small>{len(cards)} flashcards</small></a>')
-        data = json.dumps([list(c) for c in cards], ensure_ascii=False).replace("</", "<\\/")
+        data = json.dumps([list(c) + [hashlib.sha1(c[0].encode("utf-8")).hexdigest()[:12]] for c in cards], ensure_ascii=False).replace("</", "<\\/")
         lst = "".join(f'<li>{html.escape(f)}<span class="a">{html.escape(b)}</span></li>' for f, b, _ in cards)
         views.append(f'''<div class="fcv" id="fc-{slug}" hidden><div class="bar"><button type="button" class="back" data-home>← Home</button></div>
 <p class="crumb">RFBT</p><h2>{title}</h2><p class="fchint">Tap the card to flip it. Use Next and Back to move through the deck.</p>
 <button type="button" class="card" aria-live="polite"></button>
+<button type="button" class="showcrop" hidden>Show where it is in the handout</button>
+<figure class="crop" hidden><img alt="Handout excerpt"><figcaption></figcaption></figure>
 <div class="fcbar"><button type="button" class="prev">← Back</button><button type="button" class="flip">Flip</button><button type="button" class="next">Next →</button></div>
 <div class="fcmeta"><span class="cnt"></span><span><button type="button" class="shuf">Shuffle</button> · <button type="button" class="rst">Start over</button></span></div>
+<div class="croptools"><label class="cl" for="fcload-{slug}">Load handout crops</label><input type="file" id="fcload-{slug}" class="fcload" accept=".json,application/json" hidden><span class="cstat"></span></div>
 <details class="fclist"><summary>See all {len(cards)} cards</summary><ol>{lst}</ol></details>
 <script type="application/json" class="deck">{data}</script></div>''')
     return "".join(boxes), "".join(views)
