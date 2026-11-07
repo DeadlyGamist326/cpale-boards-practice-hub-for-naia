@@ -2,6 +2,7 @@
 Markup is produced as safe HTML from escaped text."""
 import html, re
 from rfbt_ask import ask, STEM
+from rfbt_keys import KEYS
 
 # Hand-written layouts for cards whose automatic split is not good enough.
 # Syntax: lines; "- " = bullet, "1. " = numbered; **bold**.
@@ -170,6 +171,24 @@ def auto_lines(a):
     sents = re.split(r"(?<=[.)])\s+(?=[A-Z])", a)
     return sents
 
+def keymark(h, front, open_tag):
+    """Bold the card's KEYS phrases in text outside existing <b> tags."""
+    ph = [p for p in KEYS.get(front, "").split("|") if p]
+    if not ph:
+        return h
+    rx = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(html.escape(p, quote=False)) for p in sorted(ph, key=len, reverse=True)) + r")(?!\w)", re.I)
+    out, depth = [], 0
+    for tok in re.split(r"(<[^>]+>)", h):
+        if tok.startswith("<"):
+            if re.match(r"<b[\s>]", tok): depth += 1
+            elif tok == "</b>": depth -= 1
+            out.append(tok)
+        elif depth == 0:
+            out.append(rx.sub(lambda m: open_tag + m.group(0) + "</b>", tok))
+        else:
+            out.append(tok)
+    return "".join(out)
+
 def fmt(front, a):
     src = OVERRIDES.get(front)
     lines = src.split("\n") if src else auto_lines(a)
@@ -177,7 +196,7 @@ def fmt(front, a):
         assert src and lines[0].rstrip().endswith(":"), front
         lines = lines[1:]
     big = (not src) and len(lines) == 1 and len(a) <= 45
-    return big, _from_lines(lines)
+    return big, (_from_lines(lines) if big else keymark(_from_lines(lines), front, "<b>"))
 
 # ---- question side ----
 TERMS = sorted(r"""Social Security Act of 2018|Social Security Commission|SSS|Commission|Chairperson|Vice-Chairperson|appointive|term of office|
@@ -210,6 +229,7 @@ def qfmt(front):
         out.append(t[pos:a]); out.append(f'<b class="{cls}">{t[a:b]}</b>'); pos = b
     out.append(t[pos:])
     s = "".join(out).replace("___", '<span class="blank">_____</span>')
+    s = keymark(s, front, '<b class="t">')
     if "\n" in s:
         a, b = s.split("\n", 1)
         s = a + '<span class="stem">' + b + '</span>'

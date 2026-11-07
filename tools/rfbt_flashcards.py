@@ -205,6 +205,7 @@ CSS = """
 .card .fq b.t{text-transform:uppercase;letter-spacing:.2px}
 .card b.k{color:var(--deep);background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
 .card .stem{display:block;margin-top:10px;font-size:.92em;color:var(--deep);font-style:italic}
+.card .fq .stem b.t{text-transform:none;background:rgba(255,214,90,.45);border-radius:3px;padding:0 2px}
 .card .blank{letter-spacing:1px;color:var(--deep)}
 .card .fa.big{text-align:center;font-weight:bold;color:var(--deep);font-size:21px}.card .fa.big b{background:none;padding:0}
 .card .src{font-size:13px;color:var(--muted)}
