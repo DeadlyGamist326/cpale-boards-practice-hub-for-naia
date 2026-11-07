@@ -3,7 +3,7 @@ import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 os.chdir(os.path.join(HERE, '..'))
-import cost_questions, cvp_questions, tax_section
+import cost_questions, cvp_questions, tax_section, rfbt_flashcards
 
 def read(p): return open(os.path.join('tools', p), encoding='utf-8').read()
 
@@ -59,6 +59,7 @@ for t in TOPICS:
                  + f'</div><p class="crumb">{t["title"]}</p>' + "".join(panes) + '</div>')
 
 tax_box, tax_views = tax_section.render()
+fc_boxes, fc_views = rfbt_flashcards.render()
 
 page = f'''<!doctype html>
 <html lang="en">
@@ -136,6 +137,7 @@ table.sum td{{text-align:left;vertical-align:top}}
 .foot{{margin-top:28px;font-size:13px;color:var(--muted);text-align:center}}
 a.sec{{text-decoration:none}}
 {tax_section.CSS}
+{rfbt_flashcards.CSS}
 </style>
 </head>
 <body>
@@ -147,10 +149,13 @@ a.sec{{text-decoration:none}}
   <div class="sections">{"".join(boxes)}</div>
   <p class="subj">Taxation</p>
   <div class="sections">{tax_box}</div>
+  <p class="subj">Regulatory Framework for Business Transactions (RFBT)</p>
+  <div class="sections">{fc_boxes}</div>
   <p class="foot">Made by Lax</p>
 </div>
 {"".join(views)}
 {tax_views}
+{fc_views}
 </main>
 <button type="button" id="retpill" hidden></button>
 
@@ -171,7 +176,7 @@ function openTopic(tid){{
 function viewFor(page){{
   if(!page)return $("home");
   if(page==="tax")return $("tax-home");
-  if(page.startsWith("tax-"))return $(page);
+  if(page.startsWith("tax-")||page.startsWith("fc-"))return $(page);
   return $("t-"+page);
 }}
 function titleOf(page){{const v=viewFor(page);const h=v&&v.querySelector("h2");return page===""?"Home":(h?h.textContent:"previous page")}}
@@ -184,9 +189,10 @@ function route(){{
   let [page,sec]=h.split("--");let el=viewFor(page);
   if(!el){{page="";el=$("home")}}
   if(curKey!==null)memo[curKey]=window.scrollY;
-  document.querySelectorAll("#home,.topic,.taxv").forEach(v=>v.hidden=v!==el);
+  document.querySelectorAll("#home,.topic,.taxv,.fcv").forEach(v=>v.hidden=v!==el);
   if(el.classList.contains("topic"))openTopic(page);
   if(page==="tax-calc")buildCalcs();
+  if(page.startsWith("fc-"))initDeck(el);
   const wasFwd=fwd;fwd=false;navs++;
   const t=trail[trail.length-1];
   if(t&&t.key===page&&!sec){{trail.pop();requestAnimationFrame(()=>window.scrollTo(0,t.y))}}
@@ -211,6 +217,7 @@ document.querySelectorAll(".tab[data-v]").forEach(b=>b.onclick=()=>{{show(cur,b.
 document.querySelectorAll(".rv").forEach(b=>{{const a=$(b.dataset.t),lab=b.textContent;b.onclick=()=>{{a.hidden=!a.hidden;b.textContent=a.hidden?lab:(lab.startsWith("Show")?"Hide answer":"Hide answer"+(lab.endsWith("s")?"s":""))}}}});
 const qf=$("tax-qf");if(qf)qf.onchange=()=>document.querySelectorAll(".tq").forEach(c=>c.hidden=!!qf.value&&c.dataset.topic!==qf.value);
 {tax_section.CALC_JS}
+{rfbt_flashcards.JS}
 route();
 </script>
 </body>
