@@ -122,8 +122,16 @@ def _inline(t):
     return EMPH_RE.sub(lambda m: f"<b>{m.group(0)}</b>", t)
 
 def _from_lines(lines):
-    out, lst = [], None
+    out, lst, sub = [], None, False
     for ln in lines:
+        ms = re.match(r"^\s{2,}- (.*)$", ln)
+        if ms and lst:
+            if not sub:
+                out[-1] = out[-1][:-5] if out[-1].endswith("</li>") else out[-1]
+                out.append('<ul class="sub">'); sub = True
+            it = ms.group(1); out.append(f"<li>{_inline(it[:1].upper() + it[1:])}</li>"); continue
+        if sub:
+            out.append("</ul></li>"); sub = False
         m = re.match(r"^(?:- |(\d+)\. )(.*)$", ln)
         if m:
             kind = "ol" if m.group(1) else "ul"
@@ -136,6 +144,7 @@ def _from_lines(lines):
         else:
             if lst: out.append(f"</{lst}>"); lst = None
             out.append(f"<p>{_inline(ln)}</p>")
+    if sub: out.append("</ul></li>")
     if lst: out.append(f"</{lst}>")
     return "".join(out)
 
@@ -256,3 +265,92 @@ def qfmt(front):
         s = a + '<span class="stem">' + b + '</span>'
 
     return decap(s)
+
+# ---- comma lists turned into bullets (user request: enumerate wherever possible) ----
+OVERRIDES.update({
+ "The hazards social security protects members against": """- **Disability**
+- **Sickness**
+- **Maternity**
+- **Old age**
+- **Death**
+- Other contingencies resulting in **loss of income** or **financial burden**""",
+ "The SSS functions and operates as what kind of entity?": """- **Independent** and **accountable**
+- **Government-owned and -controlled corporation (GOCC)**
+- Principal place of business: **Metro Manila**""",
+ "Composition of the Social Security Commission (9 members)": """**9 members:**
+- **Secretary of Finance** (Chairperson)
+- **SSS President and CEO** (Vice-Chairperson)
+- **Secretary of Labor** (ex officio)
+- **6 appointive members:**
+  - **3** for workers
+  - **3** for employers
+  - Each group with **at least 1 woman**""",
+ "Who are the dependents of a member?": """1. **Legal spouse** entitled by law to support
+2. **Legitimate, legitimated, legally adopted, and illegitimate child** who is:
+  - **Unmarried**
+  - **Not gainfully employed**
+  - **Below 21**
+3. **Parent** receiving regular support from the member""",
+ "A child over 21 is still a dependent if ___.": """He or she, **congenitally** or **while still a minor**, became:
+- **Permanently incapacitated**
+- **Incapable of self-support**, physically or mentally""",
+ "Monthly salary credit": """- The **compensation base** for **contributions and benefits**
+- For computing benefits, the **maximum MSC** is **₱20,000** until adjusted""",
+ "Primary beneficiaries": """- The **dependent spouse** until he or she **remarries**
+- The **dependent children**:
+  - **Legitimate**
+  - **Legitimated**
+  - **Legally adopted**
+  - **Illegitimate**""",
+ "Contingencies under RA 11199": """- **Retirement**
+- **Death**
+- **Disability**
+- **Injury or sickness**
+- **Maternity**
+- The IRR adds **unemployment or involuntary separation**""",
+ "Quarter": """**Three consecutive calendar months** ending on the last day of:
+- **March**
+- **June**
+- **September**
+- **December**""",
+ "Whose contributions does a self-employed member pay?": """- **Both** the **employer** and the **employee** contributions
+- Based on the **monthly earnings declared** at registration""",
+ "Before issuing an annual business permit, an LGU must require ___.": """- A **certificate of SSS coverage and compliance**
+- The SSS must issue it within **5 working days**""",
+ "SSS benefit payments are exempt from ___.": """- **All taxes, fees or charges**
+- **Attachment**
+- **Garnishment**
+- **Levy**
+- **Seizure**
+**Except** to pay the member's debt to the SSS""",
+ "A member who is 60 at retirement but lacks 120 contributions gets ___.": """A **lump sum** equal to the **total contributions paid** by and for him, if:
+- **Separated** from employment
+- **Not continuing** to pay""",
+ "Funeral benefit under RA 11199": """- **₱12,000**, in **cash or in kind**
+- The IRR now sets a **variable ₱20,000 to ₱40,000**, effective August 1, 2015""",
+ "Penalty for failing to register employees or to deduct and remit contributions": """**Both:**
+- **Fine** of **₱5,000 to ₱20,000**
+- **Imprisonment** of **6 years and 1 day to 12 years**""",
+ "Besides money, wage also includes ___.": """The **fair and reasonable value** of:
+- **Board**
+- **Lodging**
+- **Other facilities** customarily furnished by the employer
+Value is determined by the **Secretary of Labor**, and must **not include any profit** to the employer.""",
+ "Basic pay (basic salary)": """- The **rate of pay** for a **standard work period**
+- **Excluding** additional payments such as **bonuses** and **overtime**""",
+ "Special (non-working) day, unworked": """**"No work, no pay"**, unless pay is granted by a favorable:
+- **Company policy**
+- **Practice**
+- **CBA**""",
+ "\"At least one year of service\" means ___.": """**At least 12 months** from the start of work:
+- **Continuous or broken**
+- **Including** authorized absences and paid regular holidays
+- Or a **shorter period** if that is the company's working year""",
+ "What happens to unused service incentive leave?": """- **Commuted to cash** at the **end of the year**
+- If never used or commuted: paid upon **resignation or separation**
+- At the **salary rate on the date of commutation**""",
+ "Are vacation and sick leaves mandated by law?": """**No.** The law mandates only the **5-day service incentive leave**, usable for:
+- **Sick** leave
+- **Vacation** leave
+- **Other purposes**""",
+})
