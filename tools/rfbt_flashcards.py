@@ -222,7 +222,10 @@ CSS = """
 .crop img{display:block;width:100%;height:auto}
 .crop figcaption{font-size:13px;color:var(--muted);margin-top:6px;text-align:center}
 .croptools{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:18px;font-size:14px;color:var(--muted)}
-.croptools .cl{cursor:pointer;color:var(--deep);font-weight:bold;border:1.5px solid var(--rose);border-radius:8px;padding:7px 12px}
+.croptools .cunlock{display:flex;gap:8px;flex:1 1 100%}
+.croptools .cpw{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 10px;border:1.5px solid var(--rose);border-radius:8px}
+.croptools button{cursor:pointer;font:inherit;color:var(--deep);font-weight:bold;background:#fff;border:1.5px solid var(--rose);border-radius:8px;padding:8px 12px}
+.croptools .cunlock button{background:var(--rose);color:#fff}
 .fclist{margin-top:22px}
 .fclist summary{cursor:pointer;font-weight:bold;color:var(--deep)}
 .fclist ol{padding-left:22px}
@@ -232,25 +235,67 @@ CSS = """
 """
 
 JS = r"""
-const CROPS={map:{},ready:null};
+/* Handout crops: encrypted per-card files in crops/ (AES-GCM, key = PBKDF2 of Naia's password).
+   The password is typed once per device; the derived key (non-extractable) and the decrypted crops live in IndexedDB "hubcrops".
+   Each visit fetches crops/meta.json; only crops whose file name changed are downloaded, removed ones are deleted. */
+const CROPS={map:{},key:null,ready:null,sync:null,subs:[],st:{s:"idle"}};
 function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open("hubcrops",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
-function cropsLoad(){if(!CROPS.ready)CROPS.ready=idb().then(db=>new Promise(res=>{const t=db.transaction("kv").objectStore("kv").get("crops");t.onsuccess=()=>{CROPS.map=t.result||{};res()};t.onerror=()=>res()})).catch(()=>{});return CROPS.ready}
-function cropsSave(m){CROPS.map=m;return idb().then(db=>new Promise(res=>{const tx=db.transaction("kv","readwrite");tx.objectStore("kv").put(m,"crops");tx.oncomplete=res;tx.onerror=res})).catch(()=>{})}
+function kv(mode,fn){return idb().then(db=>new Promise((res,rej)=>{const tx=db.transaction("kv",mode),st=tx.objectStore("kv");let out;const r=fn(st,v=>{out=v});tx.oncomplete=()=>res(out);tx.onerror=()=>rej(tx.error)}))}
+const kvGet=k=>kv("readonly",(st,set)=>{const r=st.get(k);r.onsuccess=()=>set(r.result)});
+const kvPut=(k,v)=>kv("readwrite",st=>{st.put(v,k)});
+const kvDel=k=>kv("readwrite",st=>{st.delete(k)});
+function cropsEmit(o){CROPS.st=o;CROPS.subs.forEach(f=>f(o))}
+function cropsLoad(){if(!CROPS.ready)CROPS.ready=kv("readonly",(st,set)=>{const m={};const r=st.openCursor();r.onsuccess=()=>{const c=r.result;if(!c){set(m);return}if(typeof c.key==="string"&&c.key.startsWith("c:"))m[c.key.slice(2)]=c.value;c.continue()}})
+  .then(m=>{CROPS.map=m||{};return kvGet("ckey")}).then(k=>{CROPS.key=k||null;return kvDel("crops")}).catch(()=>{});return CROPS.ready}
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function getBin(n){const r=await fetch("crops/"+n);if(!r.ok)throw new Error("fetch");return new Uint8Array(await r.arrayBuffer())}
+async function dec(key,b){return crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},key,b.slice(12))}
+async function cropsMeta(){const r=await fetch("crops/meta.json",{cache:"no-cache"});if(!r.ok)throw new Error("meta");return r.json()}
+async function cropsSync(){
+  await cropsLoad();if(!CROPS.key){cropsEmit({s:"locked"});return}
+  let meta;try{meta=await cropsMeta()}catch(e){cropsEmit({s:"done",off:1});return}
+  if(meta.m===await kvGet("mname").catch(()=>null)){cropsEmit({s:"done",pack:meta.pack});return}
+  let man;try{man=JSON.parse(new TextDecoder().decode(await dec(CROPS.key,await getBin(meta.m))))}
+  catch(e){if(e&&e.message==="fetch"){cropsEmit({s:"done",off:1});return}await kvDel("ckey");CROPS.key=null;cropsEmit({s:"locked",changed:1});return}
+  const need=Object.keys(man).filter(k=>!CROPS.map[k]||CROPS.map[k].n!==man[k][0]);let done=0;cropsEmit({s:"sync",d:0,t:need.length});
+  const q=need.slice();
+  async function worker(){while(q.length){const k=q.shift();try{const b=await dec(CROPS.key,await getBin(man[k][0]));const v={n:man[k][0],ref:man[k][1],b};await kvPut("c:"+k,v);if(CROPS.map[k]&&CROPS.map[k].u)URL.revokeObjectURL(CROPS.map[k].u);CROPS.map[k]=v}catch(e){}done++;cropsEmit({s:"sync",d:done,t:need.length})}}
+  await Promise.all([1,2,3,4,5,6].map(worker));
+  for(const k of Object.keys(CROPS.map))if(!man[k]){await kvDel("c:"+k);delete CROPS.map[k]}
+  for(const k of Object.keys(man))if(CROPS.map[k])CROPS.map[k].ref=man[k][1];
+  if(need.every(k=>CROPS.map[k]&&CROPS.map[k].n===man[k][0]))await kvPut("mname",meta.m);
+  cropsEmit({s:"done",pack:meta.pack})}
+function cropsStart(){if(!CROPS.sync)CROPS.sync=cropsSync().catch(()=>cropsEmit({s:"done",off:1})).finally(()=>{CROPS.sync=null});return CROPS.sync}
+async function cropsUnlock(pw){
+  const meta=await cropsMeta();
+  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt:b64(meta.salt),iterations:meta.iter,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+  try{await dec(key,await getBin(meta.m))}catch(e){return false}
+  CROPS.key=key;await kvPut("ckey",key);await kvDel("mname");return true}
+async function cropsRemove(){await cropsLoad();await kv("readwrite",st=>{st.clear()});for(const k in CROPS.map)if(CROPS.map[k].u)URL.revokeObjectURL(CROPS.map[k].u);CROPS.map={};CROPS.key=null;cropsEmit({s:"locked",removed:1})}
 function initDeck(el){
   if(!el||el.dataset.ok)return;el.dataset.ok=1;
   const cards=JSON.parse(el.querySelector("script.deck").textContent),key="deck-"+el.id;
   let order=cards.map((_,i)=>i),i=0,back=false;
   try{const s=JSON.parse(localStorage.getItem(key)||"null");if(s&&s.order&&s.order.length===cards.length){order=s.order;i=s.i||0}}catch(e){}
   const card=el.querySelector(".card"),cnt=el.querySelector(".cnt"),slug=el.id.slice(3);
-  const fig=el.querySelector(".crop"),cst=el.querySelector(".cstat");
+  const fig=el.querySelector(".crop"),cst=el.querySelector(".cstat"),form=el.querySelector(".cunlock"),pw=el.querySelector(".cpw"),rm=el.querySelector(".crm");
   function cropFor(){return back?CROPS.map[slug+":"+cards[order[i]][3]]:null}
   function paintCrop(){const c=cropFor();
     if(!c){fig.hidden=true;return}
-    fig.querySelector("img").src=c.img;fig.querySelector("figcaption").textContent=c.ref;fig.hidden=false}
-  function stat(){const n=Object.keys(CROPS.map).filter(k=>k.startsWith(slug+":")).length;cst.textContent=n?n+" handout crops loaded on this device":"No crops loaded on this device"}
-  el.querySelector(".fcload").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-    r.onload=()=>{try{const d=JSON.parse(r.result);if(d.kind!=="rfbt-crops")throw 0;cropsSave(Object.assign({},CROPS.map,d.crops)).then(()=>{stat();paintCrop()});cst.textContent="Loading…"}catch(x){cst.textContent="That file is not a crops file."}};r.readAsText(f)};
-  cropsLoad().then(()=>{stat();paintCrop()});
+    if(!c.u)c.u=URL.createObjectURL(new Blob([c.b],{type:"image/jpeg"}));
+    fig.querySelector("img").src=c.u;fig.querySelector("figcaption").textContent=c.ref;fig.hidden=false}
+  function stat(o){const n=Object.keys(CROPS.map).filter(k=>k.startsWith(slug+":")).length;
+    form.hidden=o.s!=="locked";rm.hidden=!(n||CROPS.key);rm.textContent="Remove from this device";rm.dataset.arm="";
+    cst.textContent=o.s==="locked"?(o.removed?"Handout crops removed from this device. ":o.changed?"The password was changed. ":"")+"Type the password once to show handout crops on this device."
+      :o.s==="sync"?"Downloading handout crops… "+o.d+" / "+o.t
+      :o.s==="done"?(n?n+" handout crops on this device"+(o.pack?" ("+o.pack+")":"")+(o.off?" · offline, showing saved crops":""):"")
+      :"";paintCrop()}
+  CROPS.subs.push(stat);
+  form.onsubmit=e=>{e.preventDefault();const v=pw.value.trim();if(!v)return;cst.textContent="Checking password…";
+    cropsUnlock(v).then(ok=>{if(!ok){cst.textContent="Wrong password. Try again.";return}pw.value="";cropsStart()}).catch(()=>{cst.textContent="Can't reach the site right now. Try again later."})};
+  rm.onclick=()=>{if(!rm.dataset.arm){rm.dataset.arm=1;rm.textContent="Tap again to remove";return}cropsRemove()};
+  cropsLoad().then(()=>{stat(CROPS.st);cropsStart()});
   const esc=t=>t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
   const seen=new Set();
   function draw(){const c=cards[order[i]];card.classList.toggle("flipped",back);if(back)seen.add(order[i]);
@@ -271,7 +316,7 @@ function initDeck(el){
   el.querySelector(".next").onclick=()=>go(1);
   el.querySelector(".shuf").onclick=()=>{for(let k=order.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[order[k],order[j]]=[order[j],order[k]]}i=0;back=false;draw()};
   el.querySelector(".rst").onclick=()=>{order=cards.map((_,k)=>k);i=0;back=false;draw()};
-  document.addEventListener("keydown",e=>{if(el.hidden)return;if(e.key==="ArrowRight")go(1);else if(e.key==="ArrowLeft")go(-1);else if(e.key===" "&&!/^(INPUT|TEXTAREA|SELECT|SUMMARY)$/.test(e.target.tagName)){e.preventDefault();if(e.repeat)return;if(back)go(1);else{back=true;draw()}}});
+  document.addEventListener("keydown",e=>{if(el.hidden||/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;if(e.key==="ArrowRight")go(1);else if(e.key==="ArrowLeft")go(-1);else if(e.key===" "&&!/^(INPUT|TEXTAREA|SELECT|SUMMARY)$/.test(e.target.tagName)){e.preventDefault();if(e.repeat)return;if(back)go(1);else{back=true;draw()}}});
   document.addEventListener("keyup",e=>{if(!el.hidden&&e.key===" "&&e.target.tagName==="BUTTON")e.preventDefault()});
   draw();
 }
@@ -290,7 +335,7 @@ def render():
 <figure class="crop" hidden><img alt="Handout excerpt"><figcaption></figcaption></figure>
 <div class="fcbar"><button type="button" class="prev">← Back</button><button type="button" class="flip">Flip</button><button type="button" class="next">Next →</button></div>
 <div class="fcmeta"><span class="cnt"></span><span><button type="button" class="shuf">Shuffle</button> · <button type="button" class="rst">Start over</button></span></div>
-<div class="croptools"><label class="cl" for="fcload-{slug}">Load handout crops</label><input type="file" id="fcload-{slug}" class="fcload" accept=".json,application/json" hidden><span class="cstat"></span></div>
+<div class="croptools"><form class="cunlock" hidden><input type="password" class="cpw" placeholder="Handout crops password" autocomplete="current-password" aria-label="Handout crops password"><button type="submit">Unlock</button></form><span class="cstat"></span> <button type="button" class="crm" hidden>Remove from this device</button></div>
 <details class="fclist"><summary>See all {len(cards)} cards</summary><ol>{lst}</ol></details>
 <script type="application/json" class="deck">{data}</script></div>''')
     return "".join(boxes), "".join(views)
